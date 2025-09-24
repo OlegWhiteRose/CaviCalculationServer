@@ -33,6 +33,6 @@ func StartServer() {
 	r.GET("/order/:id", handler.GetOrder)
 	r.GET("/request", handler.GetRequest)
 
-	r.Run()
+	r.Run(":3000")
 	log.Println("Server down")
 }

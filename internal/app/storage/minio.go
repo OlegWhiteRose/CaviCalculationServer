@@ -16,13 +16,14 @@ type MinIOStorage struct {
 }
 
 func NewMinIOStorage() (*MinIOStorage, error) {
-	endpoint := "localhost:8080"
+	minioEndpoint := "localhost:9000"
+	nginxEndpoint := "localhost:8080"
 	accessKeyID := "admin"
 	secretAccessKey := "password123"
 	bucketName := "images"
 
-	// Инициализация MinIO клиента
-	minioClient, err := minio.New(endpoint, &minio.Options{
+
+	minioClient, err := minio.New(minioEndpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
 		Secure: false,
 	})
@@ -33,10 +34,10 @@ func NewMinIOStorage() (*MinIOStorage, error) {
 	storage := &MinIOStorage{
 		client:     minioClient,
 		bucketName: bucketName,
-		endpoint:   endpoint,
+		endpoint:   nginxEndpoint,
 	}
 
-	// Создаем бакет если его нет
+
 	err = storage.createBucketIfNotExists()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bucket: %v", err)
@@ -48,20 +49,20 @@ func NewMinIOStorage() (*MinIOStorage, error) {
 func (s *MinIOStorage) createBucketIfNotExists() error {
 	ctx := context.Background()
 
-	// Проверяем существует ли бакет
+
 	exists, err := s.client.BucketExists(ctx, s.bucketName)
 	if err != nil {
 		return err
 	}
 
 	if !exists {
-		// Создаем бакет
+
 		err = s.client.MakeBucket(ctx, s.bucketName, minio.MakeBucketOptions{})
 		if err != nil {
 			return err
 		}
 
-		// Устанавливаем публичную политику для чтения
+
 		policy := fmt.Sprintf(`{
 			"Version": "2012-10-17",
 			"Statement": [

@@ -91,7 +91,7 @@ func (r *Repository) GetOrders() ([]Order, error) {
 		},
 	}
 	if len(orders) == 0 {
-		return nil, fmt.Errorf("массив пустой")
+		return nil, fmt.Errorf("empty array")
 	}
 
 	return orders, nil
@@ -124,7 +124,7 @@ func (r *Repository) GetOrder(id int) (Order, error) {
 			return order, nil
 		}
 	}
-	return Order{}, fmt.Errorf("заказ не найден")
+	return Order{}, fmt.Errorf("order not found")
 }
 
 func (r *Repository) GetRequests() ([]Request, error) {
@@ -161,7 +161,7 @@ func (r *Repository) GetRequests() ([]Request, error) {
 	}
 
 	if len(requests) == 0 {
-		return nil, fmt.Errorf("массив пустой")
+		return nil, fmt.Errorf("empty array")
 	}
 
 	return requests, nil
@@ -178,5 +178,5 @@ func (r *Repository) GetRequest(id int) (Request, error) {
 			return request, nil
 		}
 	}
-	return Request{}, fmt.Errorf("заявка не найдена")
+	return Request{}, fmt.Errorf("request not found")
 }

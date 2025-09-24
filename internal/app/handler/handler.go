@@ -35,7 +35,7 @@ func (h *Handler) GetOrder(ctx *gin.Context) {
 		logrus.Error(err)
 	}
 
-	// Добавляем полный URL для изображения
+
 	order.ImageURL = h.Storage.GetImageURL(order.ImageURL)
 
 	ctx.HTML(http.StatusOK, "order.html", gin.H{
@@ -60,7 +60,7 @@ func (h *Handler) GetOrders(ctx *gin.Context) {
 		}
 	}
 
-	// Добавляем полные URL для изображений
+
 	for i := range orders {
 		orders[i].ImageURL = h.Storage.GetImageURL(orders[i].ImageURL)
 	}
