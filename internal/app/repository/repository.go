@@ -26,6 +26,7 @@ type RequestService struct {
 	Intensity   string
 	Price       string
 	PriceLabel  string
+	ImageURL    string
 }
 
 type Request struct {
@@ -139,6 +140,7 @@ func (r *Repository) GetRequests() ([]Request, error) {
 					Intensity:  "Умеренная",
 					Price:      "9.541",
 					PriceLabel: "Рассчитанный САИ",
+					ImageURL:   "",
 				},
 				{
 					ID:         2,
@@ -147,6 +149,7 @@ func (r *Repository) GetRequests() ([]Request, error) {
 					Intensity:  "Высокая",
 					Price:      "8.891",
 					PriceLabel: "Рассчитанный САИ",
+					ImageURL:   "",
 				},
 				{
 					ID:         3,
@@ -155,6 +158,7 @@ func (r *Repository) GetRequests() ([]Request, error) {
 					Intensity:  "Низкая",
 					Price:      "8.891",
 					PriceLabel: "Рассчитанный САИ",
+					ImageURL:   "",
 				},
 			},
 		},

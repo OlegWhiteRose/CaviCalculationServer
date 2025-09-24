@@ -93,6 +93,10 @@ func (h *Handler) GetOrdersJSON(ctx *gin.Context) {
 		}
 	}
 
+	for i := range orders {
+		orders[i].ImageURL = h.Storage.GetImageURLByID(orders[i].ID)
+	}
+
 	ctx.JSON(http.StatusOK, gin.H{
 		"orders": orders,
 		"query":  searchQuery,
@@ -108,6 +112,9 @@ func (h *Handler) GetRequest(ctx *gin.Context) {
 	var request repository.Request
 	if len(requests) > 0 {
 		request = requests[0]
+		for i := range request.Services {
+			request.Services[i].ImageURL = h.Storage.GetImageURLByID(request.Services[i].ID)
+		}
 	}
 
 	ctx.HTML(http.StatusOK, "request.html", gin.H{
