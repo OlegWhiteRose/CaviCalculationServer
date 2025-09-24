@@ -18,6 +18,20 @@ type Order struct {
 	Text  string
 }
 
+type RequestService struct {
+	ID          int
+	Title       string
+	Subtitle    string
+	Intensity   string
+	Price       string
+	PriceLabel  string
+}
+
+type Request struct {
+	ID       int
+	Services []RequestService
+}
+
 func (r *Repository) GetOrders() ([]Order, error) {
 	orders := []Order{
 		{
@@ -101,4 +115,58 @@ func (r *Repository) GetOrder(id int) (Order, error) {
 		}
 	}
 	return Order{}, fmt.Errorf("заказ не найден")
+}
+
+func (r *Repository) GetRequests() ([]Request, error) {
+	requests := []Request{
+		{
+			ID: 1,
+			Services: []RequestService{
+				{
+					ID:         1,
+					Title:      "Средний возраст (36-50 лет) с гипертонией",
+					Subtitle:   "Наименование услуги",
+					Intensity:  "Умеренная",
+					Price:      "9.541",
+					PriceLabel: "Рассчитанный САИ",
+				},
+				{
+					ID:         2,
+					Title:      "Молодые пациенты (до 35 лет) с сахарным диабетом",
+					Subtitle:   "Наименование услуги",
+					Intensity:  "Высокая",
+					Price:      "8.891",
+					PriceLabel: "Рассчитанный САИ",
+				},
+				{
+					ID:         3,
+					Title:      "Пожилые пациенты (51-70 лет) с гипертонией",
+					Subtitle:   "Наименование услуги",
+					Intensity:  "Низкая",
+					Price:      "8.891",
+					PriceLabel: "Рассчитанный САИ",
+				},
+			},
+		},
+	}
+
+	if len(requests) == 0 {
+		return nil, fmt.Errorf("массив пустой")
+	}
+
+	return requests, nil
+}
+
+func (r *Repository) GetRequest(id int) (Request, error) {
+	requests, err := r.GetRequests()
+	if err != nil {
+		return Request{}, err
+	}
+
+	for _, request := range requests {
+		if request.ID == id {
+			return request, nil
+		}
+	}
+	return Request{}, fmt.Errorf("заявка не найдена")
 }

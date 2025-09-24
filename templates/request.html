@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Оформление заявки</title>
+    <link rel="stylesheet" href="/static/styles/index.css">
+    <link rel="stylesheet" href="/static/styles/request.css">
+</head>
+
+<body>
+    <header>
+        <div class="layout">
+            <a href="/" class="header-link">CAVI калькулятор</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="layout">
+            <h1>Оформление заявки</h1>
+
+            <div class="form-container">
+                <div class="form-section">
+                    <h2>Данные измерений</h2>
+                    <div class="measurement-form">
+                        <div class="form-group">
+                            <label>Время распространения пульсовой волны (м/с)</label>
+                            <input type="number" step="0.1" value="8.1" />
+                        </div>
+                        <div class="form-group">
+                            <label>Систолическое артериальное давление (мм рт. ст.)</label>
+                            <input type="number" value="140" />
+                        </div>
+                        <div class="form-group">
+                            <label>Диастолическое артериальное давление (мм рт. ст.)</label>
+                            <input type="number" value="80" />
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <h2>Выбранные услуги</h2>
+                    <div class="services-list">
+                        {{ range .request.Services }}
+                        <div class="service-item">
+                            <img src="/static/img/1.jpg" alt="{{ .Title }}" class="service-image">
+                            <div class="service-controls">
+                                <div class="control-group">
+                                    <h3>{{ .Title }}</h3>
+                                    <p class="service-subtitle">{{ .Subtitle }}</p>
+                                </div>
+                                <div class="control-group">
+                                    <select class="intensity-select">
+                                        <option {{ if eq .Intensity "Умеренная" }}selected{{ end }}>Умеренная</option>
+                                        <option {{ if eq .Intensity "Высокая" }}selected{{ end }}>Высокая</option>
+                                        <option {{ if eq .Intensity "Низкая" }}selected{{ end }}>Низкая</option>
+                                    </select>
+                                    <label>Укажите интенсивность физической активности</label>
+                                </div>
+                                <div class="control-group">
+                                    <span class="price-value">{{ .Price }}</span>
+                                    <span class="price-label">{{ .PriceLabel }}</span>
+                                </div>
+                                <button class="remove-service">
+                                    <img src="/static/img/trash-icon.svg" alt="Удалить" class="trash-icon">
+                                </button>
+                            </div>
+                        </div>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>

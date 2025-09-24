@@ -1,0 +1,199 @@
+main .layout {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+h1 {
+    font-size: 30px;
+    font-weight: bold;
+    margin: 0;
+    color: #333;
+}
+
+.form-container {
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    padding: 24px;
+}
+
+.form-section {
+    background: transparent;
+    padding: 0;
+    margin-bottom: 30px;
+}
+
+.form-section:last-child {
+    margin-bottom: 0;
+}
+
+.form-section h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 20px 0;
+    color: #333;
+}
+
+.measurement-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.form-group input {
+    padding: 10px;
+    width: 100%;
+    box-sizing: border-box;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    font-size: 16px;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.form-group input:hover,
+.form-group input:focus {
+    border-color: rgba(0, 0, 0, 1);
+    outline: none;
+}
+
+.services-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.service-item {
+    display: flex;
+    gap: 40px;
+    align-items: center;
+
+    padding: 18px;
+    background: #fff;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    margin-bottom: 16px;
+}
+
+.service-image {
+    width: 164px;
+    height: 108px;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+
+.service-controls {
+    display: inline-flex;
+    justify-content: space-between;
+
+    gap: 20px;
+    flex: 1;
+}
+
+.control-group {
+    width: 250px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.control-group h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: #333;
+}
+
+.service-subtitle {
+    font-size: 14px;
+    color: #666;
+    margin: 0;
+}
+
+.control-group label {
+    font-size: 14px;
+    color: #666;
+    font-weight: 500;
+}
+
+.intensity-select {
+    padding: 8px 12px;
+    border: 1px solid rgba(0, 0, 0, 0.25);
+    font-size: 14px;
+    background: white;
+    min-width: 120px;
+}
+
+.price-value {
+    font-size: 18px;
+    font-weight: bold;
+    color: #004FC7;
+}
+
+.price-label {
+    font-size: 12px;
+    color: #666;
+}
+
+.remove-service {
+    height: 100%;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 4px;
+    flex-shrink: 0;
+}
+
+.trash-icon {
+    width: 24px;
+    height: 24px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 16px;
+    justify-content: flex-end;
+    padding-top: 20px;
+}
+
+.btn-submit,
+.btn-cancel {
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-submit {
+    background: #004FC7;
+    color: white;
+}
+
+.btn-submit:hover {
+    background: #0056d6;
+}
+
+.btn-cancel {
+    background: #f5f5f5;
+    color: #666;
+    border: 1px solid #ddd;
+}
+
+.btn-cancel:hover {
+    background: #e0e0e0;
+}

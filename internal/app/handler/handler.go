@@ -87,3 +87,19 @@ func (h *Handler) GetOrdersJSON(ctx *gin.Context) {
 		"query":  searchQuery,
 	})
 }
+
+func (h *Handler) GetRequest(ctx *gin.Context) {
+	requests, err := h.Repository.GetRequests()
+	if err != nil {
+		logrus.Error(err)
+	}
+
+	var request repository.Request
+	if len(requests) > 0 {
+		request = requests[0]
+	}
+
+	ctx.HTML(http.StatusOK, "request.html", gin.H{
+		"request": request,
+	})
+}
