@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Главная</title>
+    <link rel="stylesheet" href="/static/styles/index.css">
+    <link rel="stylesheet" href="/static/styles/card.css">
+    <link rel="stylesheet" href="/static/styles/home.css">
+</head>
+
+<body>
+    <header>
+        <div class="layout">
+            <a href="/" class="header-link">CAVI калькулятор</a>
+        </div>
+    </header>
+    <main>
+        <div class="layout">
+            <form action="/" method="GET">
+                <input class="search-input" type="text" name="query" placeholder="Поиск по наименованию"
+                    value="{{ .query }}">
+            </form>
+            <div class="cards">
+                {{ range .orders }}
+                <div class="card">
+                    <div class="content">
+                        <img src="/static/img/1.jpg" alt="">
+                        <div class="details">
+                            <div class="title">{{ .Title }}</div>
+                            <div class="text">{{ .Text }}</div>
+                        </div>
+                    </div>
+                    <a href="/order/{{ .ID }}"><button>Подробнее</button></a>
+                </div>
+                {{ end }}
+            </div>
+        </div>
+    </main>
+</body>
+
+</html>
