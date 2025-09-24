@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"rip/internal/app/repository"
+	"rip/internal/app/storage"
 	"strconv"
 	"time"
 
@@ -12,11 +13,13 @@ import (
 
 type Handler struct {
 	Repository *repository.Repository
+	Storage    *storage.MinIOStorage
 }
 
-func NewHandler(r *repository.Repository) *Handler {
+func NewHandler(r *repository.Repository, s *storage.MinIOStorage) *Handler {
 	return &Handler{
 		Repository: r,
+		Storage:    s,
 	}
 }
 
@@ -31,6 +34,9 @@ func (h *Handler) GetOrder(ctx *gin.Context) {
 	if err != nil {
 		logrus.Error(err)
 	}
+
+	// Добавляем полный URL для изображения
+	order.ImageURL = h.Storage.GetImageURL(order.ImageURL)
 
 	ctx.HTML(http.StatusOK, "order.html", gin.H{
 		"order": order,
@@ -52,6 +58,11 @@ func (h *Handler) GetOrders(ctx *gin.Context) {
 		if err != nil {
 			logrus.Error(err)
 		}
+	}
+
+	// Добавляем полные URL для изображений
+	for i := range orders {
+		orders[i].ImageURL = h.Storage.GetImageURL(orders[i].ImageURL)
 	}
 
 	ctx.HTML(http.StatusOK, "index.html", gin.H{

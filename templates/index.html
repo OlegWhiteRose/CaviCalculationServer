@@ -24,7 +24,7 @@
                 {{ range .orders }}
                 <div class="card">
                     <div class="content">
-                        <img src="/static/img/1.jpg" alt="">
+                        <img src="{{ .ImageURL }}" alt="{{ .Title }}">
                         <div class="details">
                             <div class="title">{{ .Title }}</div>
                             <div class="text">{{ .Text }}</div>
