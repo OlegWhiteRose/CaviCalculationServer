@@ -36,7 +36,7 @@ func (h *Handler) GetOrder(ctx *gin.Context) {
 	}
 
 
-	order.ImageURL = h.Storage.GetImageURL(order.ImageURL)
+	order.ImageURL = h.Storage.GetImageURLByID(order.ID)
 
 	ctx.HTML(http.StatusOK, "order.html", gin.H{
 		"order": order,
@@ -62,7 +62,7 @@ func (h *Handler) GetOrders(ctx *gin.Context) {
 
 
 	for i := range orders {
-		orders[i].ImageURL = h.Storage.GetImageURL(orders[i].ImageURL)
+		orders[i].ImageURL = h.Storage.GetImageURLByID(orders[i].ID)
 	}
 
 	ctx.HTML(http.StatusOK, "index.html", gin.H{

@@ -90,5 +90,9 @@ func (s *MinIOStorage) GetImageURL(filename string) string {
 	if filename == "" {
 		return ""
 	}
-	return fmt.Sprintf("http://%s/%s/%s", s.endpoint, s.bucketName, filename)
+	return fmt.Sprintf("http://%s/%s/diagrams/%s", s.endpoint, s.bucketName, filename)
+}
+
+func (s *MinIOStorage) GetImageURLByID(id int) string {
+	return fmt.Sprintf("http://%s/%s/diagrams/%d.jpg", s.endpoint, s.bucketName, id)
 }
