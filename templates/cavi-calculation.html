@@ -23,39 +23,62 @@
                     <h2>Данные измерений</h2>
                     <div class="measurement-form">
                         <div class="form-group">
-                            <label>Время распространения пульсовой волны (м/с)</label>
-                            <input type="number" step="0.1" placeholder="Введите значение" />
+                            <label>Скорость распространения пульсовой волны (м/с)</label>
+                            <input type="number" step="0.1" value="{{ .defaultPWV }}" readonly />
                         </div>
                         <div class="form-group">
                             <label>Систолическое артериальное давление (мм рт. ст.)</label>
-                            <input type="number" placeholder="Введите значение" />
+                            <input type="number" value="{{ .defaultSystolic }}" readonly />
                         </div>
                         <div class="form-group">
                             <label>Диастолическое артериальное давление (мм рт. ст.)</label>
-                            <input type="number" placeholder="Введите значение" />
+                            <input type="number" value="{{ .defaultDiastolic }}" readonly />
                         </div>
                     </div>
                 </div>
 
                 <div class="form-section">
                     <h2>Выбранные услуги</h2>
+                    {{ if .caviCalculation.CalculationGroups }}
                     <div class="services-list">
-                        {{ range .caviCalculation.Services }}
+                        {{ range .caviCalculation.CalculationGroups }}
                         <div class="service-item">
-                            <img src="{{ .ImageURL }}" alt="{{ .Title }}" class="service-image">
-                            <div class="control-group">
-                                <h3>{{ .Title }}</h3>
-                                <p class="service-subtitle">{{ .Subtitle }}</p>
+                            <div class="service-info">
+                                <img src="{{ .Group.ImageURL }}" alt="{{ .Group.Name }}" class="service-image">
+                                <div class="service-details">
+                                    <h3>{{ .Group.Name }}</h3>
+                                    <p class="service-subtitle">{{ .Group.Description }}</p>
+                                </div>
                             </div>
                             <div class="control-group CAVI-price-group">
                                 <div class="CAVI-price-group-content">
-                                    <span class="price-value">{{ .Price }}</span>
-                                    <span class="price-label">{{ .PriceLabel }}</span>
+                                    <span class="price-value">{{ printf "%.3f" .CalculatedCAVI }}</span>
+                                    <span class="price-label">Рассчитанный CAVI</span>
                                 </div>
                             </div>
+                            <!-- <div class="control-group">
+                                <form class="remove-form" action="/remove-group" method="POST">
+                                    <input type="hidden" name="group_id" value="{{ .GroupID }}">
+                                    <button type="submit" class="btn-remove-service">
+                                        <img class="trash-icon" src="/static/img/trash-icon.svg" alt="Удалить"> 
+                                    </button>
+                                </form>
+                            </div> -->
                         </div>
                         {{ end }}
                     </div>
+                    {{ else }}
+                    <p class="empty-cart-message">
+                        Тут пусто
+                    </p>
+                    {{ end }}
+                    {{ if .caviCalculation.CalculationGroups }}
+                    <div class="delete-calculation-section">
+                        <form action="/delete-calculation" method="POST">
+                            <button type="submit" class="btn-delete-calculation">Удалить заявку</button>
+                        </form>
+                    </div>
+                    {{ end }}
                 </div>
             </div>
         </div>

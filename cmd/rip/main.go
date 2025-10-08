@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	log.Println("Application start!")
+	log.Println("CAVI Calculator starting!")
 	api.StartServer()
-	log.Println("Application terminated!")
+	log.Println("CAVI Calculator terminated!")
 }

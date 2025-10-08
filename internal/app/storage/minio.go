@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -16,11 +17,11 @@ type MinIOStorage struct {
 }
 
 func NewMinIOStorage() (*MinIOStorage, error) {
-	minioEndpoint := "localhost:9000"
-	nginxEndpoint := "localhost:8080"
-	accessKeyID := "admin"
-	secretAccessKey := "password123"
-	bucketName := "images"
+	minioEndpoint := getEnv("MINIO_ENDPOINT", "localhost:9000")
+	nginxEndpoint := getEnv("MINIO_PUBLIC_ENDPOINT", "localhost:9000")
+	accessKeyID := getEnv("MINIO_ACCESS_KEY", "cavi_admin")
+	secretAccessKey := getEnv("MINIO_SECRET_KEY", "cavi_password123")
+	bucketName := getEnv("MINIO_BUCKET", "cavi-images")
 
 
 	minioClient, err := minio.New(minioEndpoint, &minio.Options{
@@ -95,4 +96,12 @@ func (s *MinIOStorage) GetImageURL(filename string) string {
 
 func (s *MinIOStorage) GetImageURLByID(id int) string {
 	return fmt.Sprintf("http://%s/%s/diagrams/%d.jpg", s.endpoint, s.bucketName, id)
+}
+
+func getEnv(key, defaultValue string) string {
+	value := os.Getenv(key)
+	if value == "" {
+		return defaultValue
+	}
+	return value
 }

@@ -1,1 +1,9 @@
 .vscode
+.env
+app.log
+*.log
+/tmp/
+.DS_Store
+*.swp
+*.swo
+*~

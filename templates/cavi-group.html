@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>{{ .caviGroup.Title }}</title>
+    <title>{{ .caviGroup.Name }}</title>
     <link rel="stylesheet" href="/static/styles/index.css">
     <link rel="stylesheet" href="/static/styles/card.css">
     <link rel="stylesheet" href="/static/styles/cavi-group.css">
@@ -21,10 +21,10 @@
             <div class="cavi-group-page">
                 <div class="card large">
                     <div class="content">
-                        <img src="{{ .caviGroup.ImageURL }}" alt="{{ .caviGroup.Title }}">
+                        <img src="{{ .caviGroup.ImageURL }}" alt="{{ .caviGroup.Name }}">
                         <div class="details">
-                            <div class="title">{{ .caviGroup.Title }}</div>
-                            <div class="text">{{ .caviGroup.Text }}</div>
+                            <div class="title">{{ .caviGroup.Name }}</div>
+                            <div class="text">{{ .caviGroup.Description }}</div>
                         </div>
                     </div>
                 </div>

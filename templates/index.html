@@ -24,24 +24,43 @@
                 {{ range .caviGroups }}
                 <div class="card">
                     <div class="content">
-                        <img src="{{ .ImageURL }}" alt="{{ .Title }}">
+                        <img src="{{ .ImageURL }}" alt="{{ .Name }}">
                         <div class="details">
-                            <div class="title">{{ .Title }}</div>
-                            <div class="text">{{ .Text }}</div>
+                            <div class="title">{{ .Name }}</div>
+                            <div class="text">{{ .Description }}</div>
                         </div>
                     </div>
-                    <a href="/cavi-group/{{ .ID }}"><button>Подробнее</button></a>
+                    <div class="card-actions">
+                        <a href="/cavi-group/{{ .ID }}"><button>Подробнее</button></a>
+                        <form action="/add-group" method="POST">
+                            <input type="hidden" name="group_id" value="{{ .ID }}">
+                            {{ if index $.groupsInCart .ID }}
+                            <button type="submit" class="btn-add-service" disabled>Добавлено</button>
+                            {{ else }}
+                            <button type="submit" class="btn-add-service">Добавить</button>
+                            {{ end }}
+                        </form>
+                    </div>
                 </div>
                 {{ end }}
             </div>
         </div>
 
+        {{ if gt .cartItemsCount 0 }}
         <a href="/cavi-calculation" class="request-link">
             <div class="request-link-content">
                 <img src="/static/img/request-link-icon.svg" alt="Расчёт" class="request-link-icon">
-                <div class="request-link-number">3</div>
+                <div class="request-link-number">{{ .cartItemsCount }}</div>
             </div>
         </a>
+        {{ else }}
+        <div class="request-link request-link-disabled">
+            <div class="request-link-content">
+                <img src="/static/img/request-link-icon.svg" alt="Расчёт" class="request-link-icon">
+                <div class="request-link-number">0</div>
+            </div>
+        </div>
+        {{ end }}
     </main>
 </body>
 

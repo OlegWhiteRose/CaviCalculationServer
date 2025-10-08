@@ -27,6 +27,12 @@ h1 {
     margin-bottom: 0;
 }
 
+.remove-form {
+    display: inline-flex;
+    flex-direction: row;
+    justify-content: right;
+}  
+
 .form-section h2 {
     font-size: 20px;
     font-weight: 600;
@@ -75,14 +81,19 @@ h1 {
 
 .service-item {
     display: flex;
-    gap: 40px;
     align-items: center;
     justify-content: space-between;
-
     padding: 18px;
     background: #fff;
     border: 1px solid rgba(0, 0, 0, 0.1);
     margin-bottom: 16px;
+}
+
+.service-info {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    flex: 1;
 }
 
 .service-image {
@@ -92,8 +103,15 @@ h1 {
     flex-shrink: 0;
 }
 
+.service-details {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 300px;
+    flex-shrink: 0;
+}
+
 .control-group {
-    width: 250px;
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -113,14 +131,14 @@ h1 {
     width: fit-content;
 }
 
-.control-group h3 {
+.service-details h3 {
     font-size: 16px;
     font-weight: 600;
     margin: 0;
     color: #333;
 }
 
-.service-subtitle {
+.service-details .service-subtitle {
     font-size: 14px;
     color: #666;
     margin: 0;
@@ -141,6 +159,7 @@ h1 {
 }
 
 .price-value {
+    text-align: center;
     font-size: 18px;
     font-weight: bold;
     color: #004FC7;
@@ -149,6 +168,11 @@ h1 {
 .price-label {
     font-size: 12px;
     color: #666;
+}
+
+.trash-icon {
+    width: 32px;
+    height: 32px;
 }
 
 .form-actions {
@@ -186,4 +210,76 @@ h1 {
 
 .btn-cancel:hover {
     background: #e0e0e0;
+}
+
+.btn-add-service {
+    background: #28a745;
+    color: white;
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-add-service:hover {
+    background: #218838;
+}
+
+.btn-remove-service {
+    background: none;
+    outline: none;
+    border: none;
+    cursor: pointer;
+}
+
+.total-cost {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-left: auto;
+}
+
+.total-label {
+    font-size: 16px;
+    color: #666;
+    font-weight: 500;
+}
+
+.total-value {
+    font-size: 20px;
+    font-weight: bold;
+    color: #004FC7;
+}
+
+.empty-cart-message {
+    text-align: center;
+    color: #666;
+    padding: 2rem;
+    font-size: 1.1rem;
+}
+
+.delete-calculation-section {
+    margin-top: 2rem;
+    padding-top: 2rem;
+    border-top: 1px solid #ddd;
+    text-align: center;
+}
+
+.btn-delete-calculation {
+    background: #dc3545;
+    color: white;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.btn-delete-calculation:hover {
+    background: #c82333;
 }
