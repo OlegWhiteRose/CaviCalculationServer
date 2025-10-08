@@ -19,7 +19,7 @@ type Order struct {
 	ImageURL string
 }
 
-type RequestService struct {
+type CalculationService struct {
 	ID          int
 	Title       string
 	Subtitle    string
@@ -29,9 +29,9 @@ type RequestService struct {
 	ImageURL    string
 }
 
-type Request struct {
+type Calculation struct {
 	ID       int
-	Services []RequestService
+    Services []CalculationService
 }
 
 func (r *Repository) GetOrders() ([]Order, error) {
@@ -128,18 +128,18 @@ func (r *Repository) GetOrder(id int) (Order, error) {
 	return Order{}, fmt.Errorf("order not found")
 }
 
-func (r *Repository) GetRequests() ([]Request, error) {
-	requests := []Request{
+func (r *Repository) GetCalculations() ([]Calculation, error) {
+    requests := []Calculation{
 		{
 			ID: 1,
-			Services: []RequestService{
+            Services: []CalculationService{
 				{
 					ID:         1,
 					Title:      "Средний возраст (36-50 лет) с гипертонией",
 					Subtitle:   "Наименование услуги",
 					Intensity:  "Умеренная",
 					Price:      "9.541",
-					PriceLabel: "Рассчитанный САИ",
+					PriceLabel: "Рассчитанный CAVI",
 					ImageURL:   "",
 				},
 				{
@@ -148,7 +148,7 @@ func (r *Repository) GetRequests() ([]Request, error) {
 					Subtitle:   "Наименование услуги",
 					Intensity:  "Высокая",
 					Price:      "8.891",
-					PriceLabel: "Рассчитанный САИ",
+					PriceLabel: "Рассчитанный CAVI",
 					ImageURL:   "",
 				},
 				{
@@ -157,24 +157,24 @@ func (r *Repository) GetRequests() ([]Request, error) {
 					Subtitle:   "Наименование услуги",
 					Intensity:  "Низкая",
 					Price:      "8.891",
-					PriceLabel: "Рассчитанный САИ",
+					PriceLabel: "Рассчитанный CAVI",
 					ImageURL:   "",
 				},
 			},
 		},
 	}
 
-	if len(requests) == 0 {
+    if len(requests) == 0 {
 		return nil, fmt.Errorf("empty array")
 	}
 
-	return requests, nil
+    return requests, nil
 }
 
-func (r *Repository) GetRequest(id int) (Request, error) {
-	requests, err := r.GetRequests()
+func (r *Repository) GetCalculation(id int) (Calculation, error) {
+    requests, err := r.GetCalculations()
 	if err != nil {
-		return Request{}, err
+        return Calculation{}, err
 	}
 
 	for _, request := range requests {
@@ -182,5 +182,5 @@ func (r *Repository) GetRequest(id int) (Request, error) {
 			return request, nil
 		}
 	}
-	return Request{}, fmt.Errorf("request not found")
+    return Calculation{}, fmt.Errorf("расчёт не найден")
 }

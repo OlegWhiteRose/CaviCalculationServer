@@ -17,8 +17,8 @@
     <main>
         <div class="layout">
             <form action="/" method="GET">
-                <input class="search-input" type="text" name="query" placeholder="Поиск по наименованию"
-                    value="{{ .query }}">
+                <input class="search-input" type="text" name="cohort" placeholder="Поиск по когорте"
+                    value="{{ .cohort }}">
             </form>
             <div class="cards">
                 {{ range .orders }}
@@ -30,15 +30,15 @@
                             <div class="text">{{ .Text }}</div>
                         </div>
                     </div>
-                    <a href="/order/{{ .ID }}"><button>Подробнее</button></a>
+                    <a href="/cohort/{{ .ID }}"><button>Подробнее</button></a>
                 </div>
                 {{ end }}
             </div>
         </div>
 
-        <a href="/request" class="request-link">
+        <a href="/calculation" class="request-link">
             <div class="request-link-content">
-                <img src="/static/img/request-link-icon.svg" alt="Request" class="request-link-icon">
+                <img src="/static/img/request-link-icon.svg" alt="Расчёт" class="request-link-icon">
                 <div class="request-link-number">3</div>
             </div>
         </a>

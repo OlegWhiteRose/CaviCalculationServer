@@ -30,8 +30,8 @@ func StartServer() {
 	r.Static("/static", "./resources")
 
 	r.GET("/", handler.GetOrders)
-	r.GET("/order/:id", handler.GetOrder)
-	r.GET("/request", handler.GetRequest)
+    r.GET("/cohort/:id", handler.GetOrder)
+    r.GET("/calculation", handler.GetCalculation)
 
 	r.Run(":3000")
 	log.Println("Server down")
