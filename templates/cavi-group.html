@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>{{ .caviGroup.Title }}</title>
+    <link rel="stylesheet" href="/static/styles/index.css">
+    <link rel="stylesheet" href="/static/styles/card.css">
+    <link rel="stylesheet" href="/static/styles/cavi-group.css">
+    <meta charset="utf-8">
+</head>
+
+<body>
+    <header>
+        <div class="layout">
+            <a href="/" class="header-link">CAVI калькулятор</a>
+        </div>
+    </header>
+
+    <main>
+        <div class="layout">
+            <div class="cavi-group-page">
+                <div class="card large">
+                    <div class="content">
+                        <img src="{{ .caviGroup.ImageURL }}" alt="{{ .caviGroup.Title }}">
+                        <div class="details">
+                            <div class="title">{{ .caviGroup.Title }}</div>
+                            <div class="text">{{ .caviGroup.Text }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+</body>
+
+</html>

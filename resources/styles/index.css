@@ -1,0 +1,50 @@
+html {
+    overflow-y: scroll;
+}
+
+html,
+body {
+    margin: 0;
+    padding: 0;
+
+    height: 100vh;
+}
+
+@font-face {
+    font-family: 'DMSans';
+    src: url('/static/font/DMSans.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+body,
+button,
+div {
+    font-family: 'DMSans', Arial, sans-serif;
+}
+
+.layout {
+    max-width: 1500px;
+    margin: 0 auto;
+    padding: 0 20px;
+}
+
+header {
+    background-color: #004FC7;
+    padding: 20px 0;
+    user-select: none;
+    font-size: 20px;
+    color: #FFFFFF;
+}
+
+.header-link {
+    color: #FFFFFF;
+    text-decoration: none;
+    font-size: 20px;
+}
+
+main {
+    padding: 20px 0;
+    color: #000000;
+}
