@@ -29,9 +29,9 @@ func StartServer() {
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./resources")
 
-	r.GET("/", handler.GetOrders)
-    r.GET("/cohort/:id", handler.GetOrder)
-    r.GET("/calculation", handler.GetCalculation)
+	r.GET("/", handler.GetCaviGroups)
+	r.GET("/cavi-group/:id", handler.GetCaviGroup)
+	r.GET("/cavi-calculation", handler.GetCaviCalculation)
 
 	r.Run(":3000")
 	log.Println("Server down")

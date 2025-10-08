@@ -12,14 +12,14 @@ func NewRepository() (*Repository, error) {
 	return &Repository{}, nil
 }
 
-type Order struct {
+type CaviGroup struct {
 	ID       int
 	Title    string
 	Text     string
 	ImageURL string
 }
 
-type CalculationService struct {
+type CaviCalculationService struct {
 	ID          int
 	Title       string
 	Subtitle    string
@@ -29,13 +29,13 @@ type CalculationService struct {
 	ImageURL    string
 }
 
-type Calculation struct {
+type CaviCalculation struct {
 	ID       int
-    Services []CalculationService
+	Services []CaviCalculationService
 }
 
-func (r *Repository) GetOrders() ([]Order, error) {
-	orders := []Order{
+func (r *Repository) GetCaviGroups() ([]CaviGroup, error) {
+	caviGroups := []CaviGroup{
 		{
 			ID:       1,
 			Title:    "Молодые пациенты (до 35 лет)",
@@ -91,48 +91,48 @@ func (r *Repository) GetOrders() ([]Order, error) {
 			ImageURL: "",
 		},
 	}
-	if len(orders) == 0 {
+	if len(caviGroups) == 0 {
 		return nil, fmt.Errorf("empty array")
 	}
 
-	return orders, nil
+	return caviGroups, nil
 }
 
-func (r *Repository) GetOrdersByTitle(title string) ([]Order, error) {
-	orders, err := r.GetOrders()
+func (r *Repository) GetCaviGroupsByTitle(title string) ([]CaviGroup, error) {
+	caviGroups, err := r.GetCaviGroups()
 	if err != nil {
-		return []Order{}, err
+		return []CaviGroup{}, err
 	}
 
-	var result []Order
-	for _, order := range orders {
-		if strings.Contains(strings.ToLower(order.Title), strings.ToLower(title)) {
-			result = append(result, order)
+	var result []CaviGroup
+	for _, caviGroup := range caviGroups {
+		if strings.Contains(strings.ToLower(caviGroup.Title), strings.ToLower(title)) {
+			result = append(result, caviGroup)
 		}
 	}
 
 	return result, nil
 }
 
-func (r *Repository) GetOrder(id int) (Order, error) {
-	orders, err := r.GetOrders()
+func (r *Repository) GetCaviGroup(id int) (CaviGroup, error) {
+	caviGroups, err := r.GetCaviGroups()
 	if err != nil {
-		return Order{}, err
+		return CaviGroup{}, err
 	}
 
-	for _, order := range orders {
-		if order.ID == id {
-			return order, nil
+	for _, caviGroup := range caviGroups {
+		if caviGroup.ID == id {
+			return caviGroup, nil
 		}
 	}
-	return Order{}, fmt.Errorf("order not found")
+	return CaviGroup{}, fmt.Errorf("группа CAVI не найдена")
 }
 
-func (r *Repository) GetCalculations() ([]Calculation, error) {
-    requests := []Calculation{
+func (r *Repository) GetCaviCalculations() ([]CaviCalculation, error) {
+	requests := []CaviCalculation{
 		{
 			ID: 1,
-            Services: []CalculationService{
+			Services: []CaviCalculationService{
 				{
 					ID:         1,
 					Title:      "Средний возраст (36-50 лет) с гипертонией",
@@ -171,10 +171,10 @@ func (r *Repository) GetCalculations() ([]Calculation, error) {
     return requests, nil
 }
 
-func (r *Repository) GetCalculation(id int) (Calculation, error) {
-    requests, err := r.GetCalculations()
+func (r *Repository) GetCaviCalculation(id int) (CaviCalculation, error) {
+	requests, err := r.GetCaviCalculations()
 	if err != nil {
-        return Calculation{}, err
+		return CaviCalculation{}, err
 	}
 
 	for _, request := range requests {
@@ -182,5 +182,5 @@ func (r *Repository) GetCalculation(id int) (Calculation, error) {
 			return request, nil
 		}
 	}
-    return Calculation{}, fmt.Errorf("расчёт не найден")
+	return CaviCalculation{}, fmt.Errorf("расчёт CAVI не найден")
 }

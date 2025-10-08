@@ -4,8 +4,7 @@
 <head>
     <title>Расчёт CAVI</title>
     <link rel="stylesheet" href="/static/styles/index.css">
-    <link rel="stylesheet" href="/static/styles/calculation.css">
-    
+    <link rel="stylesheet" href="/static/styles/cavi-calculation.css">
 </head>
 
 <body>
@@ -41,7 +40,7 @@
                 <div class="form-section">
                     <h2>Выбранные услуги</h2>
                     <div class="services-list">
-                        {{ range .calculation.Services }}
+                        {{ range .caviCalculation.Services }}
                         <div class="service-item">
                             <img src="{{ .ImageURL }}" alt="{{ .Title }}" class="service-image">
                             <div class="control-group">

@@ -23,93 +23,93 @@ func NewHandler(r *repository.Repository, s *storage.MinIOStorage) *Handler {
 	}
 }
 
-func (h *Handler) GetOrder(ctx *gin.Context) {
+func (h *Handler) GetCaviGroup(ctx *gin.Context) {
 	idStr := ctx.Param("id")
 	id, err := strconv.Atoi(idStr)
 	if err != nil {
 		logrus.Error(err)
 	}
 
-	order, err := h.Repository.GetOrder(id)
+	caviGroup, err := h.Repository.GetCaviGroup(id)
 	if err != nil {
 		logrus.Error(err)
 	}
 
 
-	order.ImageURL = h.Storage.GetImageURLByID(order.ID)
+	caviGroup.ImageURL = h.Storage.GetImageURLByID(caviGroup.ID)
 
-	ctx.HTML(http.StatusOK, "order.html", gin.H{
-		"order": order,
+	ctx.HTML(http.StatusOK, "cavi-group.html", gin.H{
+		"caviGroup": caviGroup,
 	})
 }
 
-func (h *Handler) GetOrders(ctx *gin.Context) {
-	var orders []repository.Order
+func (h *Handler) GetCaviGroups(ctx *gin.Context) {
+	var caviGroups []repository.CaviGroup
 	var err error
 
-    searchTitle := ctx.Query("cohort")
-    if searchTitle == "" {
-		orders, err = h.Repository.GetOrders()
+	searchTitle := ctx.Query("caviGroupTitle")
+	if searchTitle == "" {
+		caviGroups, err = h.Repository.GetCaviGroups()
 		if err != nil {
 			logrus.Error(err)
 		}
 	} else {
-        orders, err = h.Repository.GetOrdersByTitle(searchTitle)
+		caviGroups, err = h.Repository.GetCaviGroupsByTitle(searchTitle)
 		if err != nil {
 			logrus.Error(err)
 		}
 	}
 
 
-	for i := range orders {
-		orders[i].ImageURL = h.Storage.GetImageURLByID(orders[i].ID)
+	for i := range caviGroups {
+		caviGroups[i].ImageURL = h.Storage.GetImageURLByID(caviGroups[i].ID)
 	}
 
-    ctx.HTML(http.StatusOK, "index.html", gin.H{
+	ctx.HTML(http.StatusOK, "index.html", gin.H{
 		"time":   time.Now().Format("15:04:05"),
-		"orders": orders,
-        "cohort": searchTitle,
+		"caviGroups": caviGroups,
+		"caviGroupTitle": searchTitle,
 	})
 }
 
-func (h *Handler) GetOrdersJSON(ctx *gin.Context) {
-	var orders []repository.Order
+func (h *Handler) GetCaviGroupsJSON(ctx *gin.Context) {
+	var caviGroups []repository.CaviGroup
 	var err error
 
-    searchTitle := ctx.Query("cohort")
-    if searchTitle == "" {
-		orders, err = h.Repository.GetOrders()
+	searchTitle := ctx.Query("caviGroupTitle")
+	if searchTitle == "" {
+		caviGroups, err = h.Repository.GetCaviGroups()
 		if err != nil {
 			logrus.Error(err)
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch orders"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to fetch cavi groups"})
 			return
 		}
 	} else {
-        orders, err = h.Repository.GetOrdersByTitle(searchTitle)
+		caviGroups, err = h.Repository.GetCaviGroupsByTitle(searchTitle)
 		if err != nil {
 			logrus.Error(err)
-			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to search orders"})
+			ctx.JSON(http.StatusInternalServerError, gin.H{"error": "failed to search cavi groups"})
 			return
 		}
 	}
 
-	for i := range orders {
-		orders[i].ImageURL = h.Storage.GetImageURLByID(orders[i].ID)
+	for i := range caviGroups {
+		caviGroups[i].ImageURL = h.Storage.GetImageURLByID(caviGroups[i].ID)
 	}
 
-    ctx.JSON(http.StatusOK, gin.H{
-		"orders": orders,
-        "cohort": searchTitle,
+	ctx.JSON(http.StatusOK, gin.H{
+		"caviGroups": caviGroups,
+		"caviGroupTitle": searchTitle,
 	})
 }
 
-func (h *Handler) GetCalculation(ctx *gin.Context) {
-    requests, err := h.Repository.GetCalculations()
+func (h *Handler) GetCaviCalculation(ctx *gin.Context) {
+	requests, err := h.Repository.GetCaviCalculations()
 	if err != nil {
 		logrus.Error(err)
 	}
 
-    var request repository.Calculation
+	var request repository.CaviCalculation
 	if len(requests) > 0 {
 		request = requests[0]
 		for i := range request.Services {
@@ -117,7 +117,7 @@ func (h *Handler) GetCalculation(ctx *gin.Context) {
 		}
 	}
 
-    ctx.HTML(http.StatusOK, "calculation.html", gin.H{
-        "calculation": request,
+	ctx.HTML(http.StatusOK, "cavi-calculation.html", gin.H{
+		"caviCalculation": request,
 	})
 }

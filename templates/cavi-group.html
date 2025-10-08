@@ -2,10 +2,10 @@
 <html>
 
 <head>
-    <title>{{ .order.Title }}</title>
+    <title>{{ .caviGroup.Title }}</title>
     <link rel="stylesheet" href="/static/styles/index.css">
     <link rel="stylesheet" href="/static/styles/card.css">
-    <link rel="stylesheet" href="/static/styles/order.css">
+    <link rel="stylesheet" href="/static/styles/cavi-group.css">
     <meta charset="utf-8">
 </head>
 
@@ -18,13 +18,13 @@
 
     <main>
         <div class="layout">
-            <div class="order-page">
+            <div class="cavi-group-page">
                 <div class="card large">
                     <div class="content">
-                        <img src="{{ .order.ImageURL }}" alt="{{ .order.Title }}">
+                        <img src="{{ .caviGroup.ImageURL }}" alt="{{ .caviGroup.Title }}">
                         <div class="details">
-                            <div class="title">{{ .order.Title }}</div>
-                            <div class="text">{{ .order.Text }}</div>
+                            <div class="title">{{ .caviGroup.Title }}</div>
+                            <div class="text">{{ .caviGroup.Text }}</div>
                         </div>
                     </div>
                 </div>

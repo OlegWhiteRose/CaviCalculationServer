@@ -17,11 +17,11 @@
     <main>
         <div class="layout">
             <form action="/" method="GET">
-                <input class="search-input" type="text" name="cohort" placeholder="Поиск по когорте"
-                    value="{{ .cohort }}">
+                <input class="search-input" type="text" name="caviGroupTitle" placeholder="Поиск по наименованию"
+                    value="{{ .caviGroupTitle }}">
             </form>
             <div class="cards">
-                {{ range .orders }}
+                {{ range .caviGroups }}
                 <div class="card">
                     <div class="content">
                         <img src="{{ .ImageURL }}" alt="{{ .Title }}">
@@ -30,13 +30,13 @@
                             <div class="text">{{ .Text }}</div>
                         </div>
                     </div>
-                    <a href="/cohort/{{ .ID }}"><button>Подробнее</button></a>
+                    <a href="/cavi-group/{{ .ID }}"><button>Подробнее</button></a>
                 </div>
                 {{ end }}
             </div>
         </div>
 
-        <a href="/calculation" class="request-link">
+        <a href="/cavi-calculation" class="request-link">
             <div class="request-link-content">
                 <img src="/static/img/request-link-icon.svg" alt="Расчёт" class="request-link-icon">
                 <div class="request-link-number">3</div>
