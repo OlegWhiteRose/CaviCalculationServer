@@ -7,6 +7,7 @@ import (
 	"rip/internal/app/repository"
 	"rip/internal/app/storage"
 	"rip/internal/app/currentuser"
+	"rip/internal/app/userstate"
 	"strconv"
 	"time"
 	"context"
@@ -21,10 +22,61 @@ type Handler struct {
 	Storage    *storage.MinIOStorage
 }
 
+func isModeratorLoggedIn() bool {
+    if u, ok := userstate.Me(); ok {
+        return u.IsModerator
+    }
+    return false
+}
+
+func getCreatorID() int {
+    if u, ok := userstate.Me(); ok { return u.ID }
+    return currentuser.CurrentCreatorID()
+}
+func getModeratorID() int {
+    if u, ok := userstate.Me(); ok { return u.ID }
+    return currentuser.CurrentModeratorID()
+}
+
+type userRegisterReq struct { Username string `json:"username"`; Password string `json:"password"` }
+type userLoginReq struct { Username string `json:"username"`; Password string `json:"password"` }
+
+func (h *Handler) UsersRegisterAPI(ctx *gin.Context) {
+    var req userRegisterReq
+    if err := ctx.BindJSON(&req); err != nil || req.Username == "" || req.Password == "" {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid input"}); return
+    }
+    if u, ok := userstate.Register(req.Username, req.Password); ok {
+        ctx.JSON(http.StatusCreated, gin.H{"status": "ok", "data": u}); return
+    }
+    ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "username exists"})
+}
+
+func (h *Handler) UsersLoginAPI(ctx *gin.Context) {
+    var req userLoginReq
+    if err := ctx.BindJSON(&req); err != nil || req.Username == "" || req.Password == "" { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid input"}); return }
+    if u, ok := userstate.Login(req.Username, req.Password); ok {
+        ctx.JSON(http.StatusOK, gin.H{"status": "ok", "data": u}); return
+    }
+    ctx.JSON(http.StatusUnauthorized, gin.H{"status": "fail", "message": "invalid credentials"})
+}
+
+func (h *Handler) UsersLogoutAPI(ctx *gin.Context) {
+    userstate.Logout()
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (h *Handler) UsersMeAPI(ctx *gin.Context) {
+    if u, ok := userstate.Me(); ok {
+        ctx.JSON(http.StatusOK, gin.H{"status": "ok", "data": u}); return
+    }
+    ctx.JSON(http.StatusUnauthorized, gin.H{"status": "fail", "message": "not authenticated"})
+}
+
 func (h *Handler) AddGroupToDraftFromGroupAPI(ctx *gin.Context) {
     id, err := strconv.Atoi(ctx.Param("id"))
     if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
-    userID := currentuser.CurrentCreatorID()
+    userID := getCreatorID()
     calc, err := h.Repository.AddGroupToDraftByUser(userID, id)
     if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
     _ = h.Repository.SetGroupSelected(id, true)
@@ -41,7 +93,7 @@ func (h *Handler) ModerateCalculationAPI(ctx *gin.Context) {
         ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid action"})
         return
     }
-    moderatorID := currentuser.CurrentModeratorID()
+    moderatorID := getModeratorID()
     current, err := h.Repository.GetCalculationByID(id)
     if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
     if current.Status != ds.StatusFormed {
@@ -74,7 +126,7 @@ func (h *Handler) ListCalculationsAPI(ctx *gin.Context) {
         ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
         return
     }
-    // обогащение: имена и счетчик результатов (кол-во позиций в м-м)
+
     for i := range items {
         if items[i].Creator != nil { items[i].CreatorUsername = items[i].Creator.Username }
         if items[i].Moderator != nil { items[i].ModeratorUsername = items[i].Moderator.Username }
@@ -135,14 +187,17 @@ func (h *Handler) UpdateCalculationAPI(ctx *gin.Context) {
 }
 
 func (h *Handler) FormCalculationAPI(ctx *gin.Context) {
+    if !isModeratorLoggedIn() {
+        ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "требуется роль модератора"}); return
+    }
     id, err := strconv.Atoi(ctx.Param("id"))
     if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
-    userID := currentuser.CurrentCreatorID()
+    userID := getCreatorID()
   
     current, err := h.Repository.GetCalculationByID(id)
     if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
-    if current.Status != ds.StatusDraft || current.CreatorID != userID {
-        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "формирование доступно только для черновика создателя"})
+    if current.Status != ds.StatusDraft {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "формирование доступно только для черновика"})
         return
     }
 
@@ -154,9 +209,12 @@ func (h *Handler) FormCalculationAPI(ctx *gin.Context) {
 }
 
 func (h *Handler) CompleteCalculationAPI(ctx *gin.Context) {
+    if !isModeratorLoggedIn() {
+        ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "требуется роль модератора"}); return
+    }
     id, err := strconv.Atoi(ctx.Param("id"))
     if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
-    moderatorID := currentuser.CurrentModeratorID()
+    moderatorID := getModeratorID()
 
     current, err := h.Repository.GetCalculationByID(id)
     if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
@@ -174,9 +232,12 @@ func (h *Handler) CompleteCalculationAPI(ctx *gin.Context) {
 }
 
 func (h *Handler) RejectCalculationAPI(ctx *gin.Context) {
+    if !isModeratorLoggedIn() {
+        ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "требуется роль модератора"}); return
+    }
     id, err := strconv.Atoi(ctx.Param("id"))
     if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
-    moderatorID := currentuser.CurrentModeratorID()
+    moderatorID := getModeratorID()
    
     current, err := h.Repository.GetCalculationByID(id)
     if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
@@ -191,13 +252,15 @@ func (h *Handler) RejectCalculationAPI(ctx *gin.Context) {
 func (h *Handler) DeleteCalculationAPI(ctx *gin.Context) {
     id, err := strconv.Atoi(ctx.Param("id"))
     if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
-    userID := currentuser.CurrentCreatorID()
+    userID := getCreatorID()
     current, err := h.Repository.GetCalculationByID(id)
     if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
     if current.Status != ds.StatusDraft || current.CreatorID != userID {
         ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "удаление доступно только для черновика создателя"})
         return
     }
+
+    _ = h.Repository.UnselectGroupsByCalculation(id)
     if err := h.Repository.SoftDeleteCalculation(id); err != nil { ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()}); return }
     ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
@@ -207,7 +270,7 @@ type mmAddReq struct { GroupID int `json:"group_id"` }
 func (h *Handler) AddItemToDraftAPI(ctx *gin.Context) {
     var req mmAddReq
     if err := ctx.BindJSON(&req); err != nil || req.GroupID <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid group_id"}); return }
-    userID := currentuser.CurrentCreatorID()
+    userID := getCreatorID()
     calc, err := h.Repository.AddGroupToDraftByUser(userID, req.GroupID)
     if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
     _ = h.Repository.SetGroupSelected(req.GroupID, true)
@@ -219,7 +282,7 @@ type mmDeleteReq struct { GroupID int `json:"group_id"` }
 func (h *Handler) RemoveItemFromDraftAPI(ctx *gin.Context) {
     var req mmDeleteReq
     if err := ctx.BindJSON(&req); err != nil || req.GroupID <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid group_id"}); return }
-    userID := currentuser.CurrentCreatorID()
+    userID := getCreatorID()
     calc, err := h.Repository.RemoveGroupFromDraftByUser(userID, req.GroupID)
     if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
     _ = h.Repository.SetGroupSelected(req.GroupID, false)
@@ -231,7 +294,7 @@ type mmUpdateReq struct { GroupID int `json:"group_id"`; GroupPrice *float64 `js
 func (h *Handler) UpdateItemInDraftAPI(ctx *gin.Context) {
     var req mmUpdateReq
     if err := ctx.BindJSON(&req); err != nil || req.GroupID <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid input"}); return }
-    userID := currentuser.CurrentCreatorID()
+    userID := getCreatorID()
     calc, err := h.Repository.GetDraftCalculationByUserID(userID)
     if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "no draft found"}); return }
     if req.GroupPrice != nil {
@@ -283,6 +346,9 @@ type groupCreateReq struct {
 }
 
 func (h *Handler) CreateGroupAPI(ctx *gin.Context) {
+    if !isModeratorLoggedIn() {
+        ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "требуется роль модератора"}); return
+    }
     var req groupCreateReq
     if err := ctx.BindJSON(&req); err != nil {
         ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid json"})
@@ -350,6 +416,9 @@ func (h *Handler) UpdateGroupAPI(ctx *gin.Context) {
 }
 
 func (h *Handler) DeleteGroupAPI(ctx *gin.Context) {
+    if !isModeratorLoggedIn() {
+        ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "требуется роль модератора"}); return
+    }
     id, err := strconv.Atoi(ctx.Param("id"))
     if err != nil || id <= 0 {
         ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"})
@@ -396,7 +465,7 @@ func (h *Handler) UploadGroupImageAPI(ctx *gin.Context) {
 }
 
 func (h *Handler) GetCartIconAPI(ctx *gin.Context) {
-    userID := currentuser.CurrentCreatorID()
+    userID := getCreatorID()
     calc, err := h.Repository.GetDraftCalculationByUserID(userID)
     if err != nil {
         ctx.JSON(http.StatusOK, gin.H{"status": "ok", "calculation_id": 0, "items": 0})

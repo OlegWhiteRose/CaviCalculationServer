@@ -59,7 +59,7 @@ func (r *Repository) CreateDraftCalculation(userID int) (*ds.CaviCalculation, er
 
 func (r *Repository) GetCalculationByID(id int) (*ds.CaviCalculation, error) {
 	var calculation ds.CaviCalculation
-	err := r.db.Where("id = ? AND status != ?", id, ds.StatusDeleted).First(&calculation).Error
+	err := r.db.Where("id = ?", id).First(&calculation).Error
 	if err != nil {
 		return nil, err
 	}
@@ -104,9 +104,16 @@ func (r *Repository) SetGroupSelected(groupID int, selected bool) error {
 }
 
 func (r *Repository) UnselectAllGroups() error {
-	return r.db.Session(&gorm.Session{AllowGlobalUpdate: true}).
-		Model(&ds.CaviGroup{}).
-		Update("is_selected", false).Error
+    return r.db.Session(&gorm.Session{AllowGlobalUpdate: true}).
+        Model(&ds.CaviGroup{}).
+        Update("is_selected", false).Error
+}
+
+func (r *Repository) UnselectGroupsByCalculation(calculationID int) error {
+    return r.db.Exec(
+        "UPDATE cavi_groups SET is_selected = FALSE WHERE id IN (SELECT group_id FROM cavi_calculation_groups WHERE calculation_id = ?)",
+        calculationID,
+    ).Error
 }
 
 type GroupFilters struct {
@@ -159,9 +166,7 @@ type CalculationFilters struct {
 }
 
 func (r *Repository) ListCalculationsFiltered(f CalculationFilters) ([]ds.CaviCalculation, error) {
-	q := r.db.Model(&ds.CaviCalculation{}).
-		Where("status != ? AND status != ?", ds.StatusDeleted, ds.StatusDraft).
-		Preload("Creator").Preload("Moderator")
+	q := r.db.Model(&ds.CaviCalculation{})
 	if f.Status != "" {
 		q = q.Where("status = ?", f.Status)
 	}
@@ -180,7 +185,7 @@ func (r *Repository) ListCalculationsFiltered(f CalculationFilters) ([]ds.CaviCa
 
 func (r *Repository) GetCalculationDetailed(id int) (*ds.CaviCalculation, error) {
 	var calc ds.CaviCalculation
-	if err := r.db.Preload("Creator").Preload("Moderator").First(&calc, "id = ? AND status != ?", id, ds.StatusDeleted).Error; err != nil {
+	if err := r.db.First(&calc, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &calc, nil

@@ -67,6 +67,8 @@ type User struct {
 	IsModerator  bool   `gorm:"type:boolean;not null;default:false"`
 }
 
+func (User) TableName() string { return "auth_user" }
+
 const (
 	StatusDraft     = "draft"
 	StatusDeleted   = "deleted"

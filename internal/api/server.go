@@ -70,6 +70,11 @@ func StartServer() {
 
 		api.DELETE("/cavi-calculations/draft/groups", handler.RemoveItemFromDraftAPI)
 		api.PUT("/cavi-calculations/draft/groups", handler.UpdateItemInDraftAPI)
+
+		api.POST("/users/register", handler.UsersRegisterAPI)
+		api.POST("/users/login", handler.UsersLoginAPI)
+		api.POST("/users/logout", handler.UsersLogoutAPI)
+		api.GET("/users/me", handler.UsersMeAPI)
 	}
 
 	serverAddr := fmt.Sprintf("%s:%d", cfg.CaviServerHost, cfg.CaviServerPort)
