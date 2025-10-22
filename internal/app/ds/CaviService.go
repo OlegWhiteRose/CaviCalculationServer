@@ -36,6 +36,10 @@ type CaviCalculation struct {
 	Creator             *User                    `gorm:"foreignKey:CreatorID"`
 	Moderator           *User                    `gorm:"foreignKey:ModeratorID"`
 	CalculationGroups []CaviCalculationGroup `gorm:"foreignKey:CalculationID"`
+	
+	CreatorUsername    string `gorm:"-"`
+	ModeratorUsername  string `gorm:"-"`
+	ResultCount        int    `gorm:"-"`
 }
 
 func (CaviCalculation) TableName() string {

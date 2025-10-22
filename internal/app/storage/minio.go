@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"io"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -96,6 +97,18 @@ func (s *MinIOStorage) GetImageURL(filename string) string {
 
 func (s *MinIOStorage) GetImageURLByID(id int) string {
 	return fmt.Sprintf("http://%s/%s/diagrams/%d.jpg", s.endpoint, s.bucketName, id)
+}
+
+func (s *MinIOStorage) UploadGroupImage(ctx context.Context, id int, reader io.Reader, size int64, contentType string) error {
+	objectName := fmt.Sprintf("diagrams/%d.jpg", id)
+	opts := minio.PutObjectOptions{ContentType: contentType}
+	_, err := s.client.PutObject(ctx, s.bucketName, objectName, reader, size, opts)
+	return err
+}
+
+func (s *MinIOStorage) DeleteGroupImage(ctx context.Context, id int) error {
+	objectName := fmt.Sprintf("diagrams/%d.jpg", id)
+	return s.client.RemoveObject(ctx, s.bucketName, objectName, minio.RemoveObjectOptions{})
 }
 
 func getEnv(key, defaultValue string) string {

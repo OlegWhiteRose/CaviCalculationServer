@@ -50,6 +50,28 @@ func StartServer() {
 	r.POST("/add-group", handler.AddGroupToCalculation)
 	r.POST("/calculations/:id/delete", handler.SoftDeleteCalculationByID)
 
+	api := r.Group("/api")
+	{
+		api.GET("/cavi-groups", handler.GetGroupsAPI)
+		api.GET("/cavi-groups/:id", handler.GetGroupAPI)
+		api.POST("/cavi-groups", handler.CreateGroupAPI)
+		api.PUT("/cavi-groups/:id", handler.UpdateGroupAPI)
+		api.DELETE("/cavi-groups/:id", handler.DeleteGroupAPI)
+		api.POST("/cavi-groups/:id/image", handler.UploadGroupImageAPI)
+		api.POST("/cavi-groups/:id/add-to-draft", handler.AddGroupToDraftFromGroupAPI)
+
+		api.GET("/cavi-calculations/draft", handler.GetCartIconAPI)
+		api.GET("/cavi-calculations", handler.ListCalculationsAPI)
+		api.GET("/cavi-calculations/:id", handler.GetCalculationAPI)
+		api.PUT("/cavi-calculations/:id", handler.UpdateCalculationAPI)
+		api.PUT("/cavi-calculations/:id/form", handler.FormCalculationAPI)
+		api.PUT("/cavi-calculations/:id/moderate", handler.ModerateCalculationAPI)
+		api.DELETE("/cavi-calculations/:id", handler.DeleteCalculationAPI)
+
+		api.DELETE("/cavi-calculations/draft/groups", handler.RemoveItemFromDraftAPI)
+		api.PUT("/cavi-calculations/draft/groups", handler.UpdateItemInDraftAPI)
+	}
+
 	serverAddr := fmt.Sprintf("%s:%d", cfg.CaviServerHost, cfg.CaviServerPort)
 	log.Printf("Server starting on %s", serverAddr)
 	r.Run(serverAddr)

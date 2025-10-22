@@ -6,8 +6,10 @@ import (
 	"rip/internal/app/ds"
 	"rip/internal/app/repository"
 	"rip/internal/app/storage"
+	"rip/internal/app/currentuser"
 	"strconv"
 	"time"
+	"context"
 
 	"github.com/gin-gonic/gin"
 	"github.com/sirupsen/logrus"
@@ -17,6 +19,395 @@ type Handler struct {
 	Config     *config.Config
 	Repository *repository.Repository
 	Storage    *storage.MinIOStorage
+}
+
+func (h *Handler) AddGroupToDraftFromGroupAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
+    userID := currentuser.CurrentCreatorID()
+    calc, err := h.Repository.AddGroupToDraftByUser(userID, id)
+    if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
+    _ = h.Repository.SetGroupSelected(id, true)
+    ctx.JSON(http.StatusCreated, gin.H{"status": "ok", "calculation_id": calc.ID})
+}
+
+type moderateReq struct { Action string `json:"action"` }
+
+func (h *Handler) ModerateCalculationAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
+    var req moderateReq
+    if err := ctx.BindJSON(&req); err != nil || (req.Action != "complete" && req.Action != "reject") {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid action"})
+        return
+    }
+    moderatorID := currentuser.CurrentModeratorID()
+    current, err := h.Repository.GetCalculationByID(id)
+    if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
+    if current.Status != ds.StatusFormed {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "модерация доступна только для сформированной заявки"})
+        return
+    }
+    if req.Action == "complete" {
+        groups, err := h.Repository.GetCalculationGroups(id)
+        if err != nil { ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()}); return }
+        var total float64
+        for _, g := range groups { total += g.GroupPrice }
+        if err := h.Repository.CompleteCalculation(id, moderatorID); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
+        ctx.JSON(http.StatusOK, gin.H{"status": "ok", "total_price": total})
+        return
+    }
+    if err := h.Repository.RejectCalculation(id, moderatorID); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+
+func (h *Handler) ListCalculationsAPI(ctx *gin.Context) {
+    status := ctx.Query("status")
+    df := ctx.Query("date_from")
+    dt := ctx.Query("date_to")
+    var dfPtr, dtPtr *string
+    if df != "" { dfPtr = &df }
+    if dt != "" { dtPtr = &dt }
+    items, err := h.Repository.ListCalculationsFiltered(repository.CalculationFilters{Status: status, DateFrom: dfPtr, DateTo: dtPtr})
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+        return
+    }
+    // обогащение: имена и счетчик результатов (кол-во позиций в м-м)
+    for i := range items {
+        if items[i].Creator != nil { items[i].CreatorUsername = items[i].Creator.Username }
+        if items[i].Moderator != nil { items[i].ModeratorUsername = items[i].Moderator.Username }
+        groups, _ := h.Repository.GetCalculationGroups(items[i].ID)
+        items[i].ResultCount = len(groups)
+    }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok", "data": items})
+}
+
+func (h *Handler) GetCalculationAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"})
+        return
+    }
+    calc, err := h.Repository.GetCalculationDetailed(id)
+    if err != nil || calc == nil {
+        ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"})
+        return
+    }
+    if calc.Status == ds.StatusDeleted {
+        ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"})
+        return
+    }
+    if calc.Creator != nil { calc.CreatorUsername = calc.Creator.Username }
+    if calc.Moderator != nil { calc.ModeratorUsername = calc.Moderator.Username }
+    groups, err := h.Repository.GetCalculationGroups(calc.ID)
+    if err != nil { ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()}); return }
+
+    for i := range groups {
+        if groups[i].Group != nil {
+            groups[i].Group.ImageURL = h.Storage.GetImageURLByID(groups[i].Group.ID)
+        }
+    }
+    calc.CalculationGroups = groups
+    calc.ResultCount = len(groups)
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok", "data": calc})
+}
+
+type calcUpdateReq struct {
+    SystolicPressure  *int     `json:"systolic_pressure"`
+    DiastolicPressure *int     `json:"diastolic_pressure"`
+    PulseWaveVelocity *float64 `json:"pulse_wave_velocity"`
+}
+
+func (h *Handler) UpdateCalculationAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
+    var req calcUpdateReq
+    if err := ctx.BindJSON(&req); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid json"}); return }
+    updates := map[string]any{}
+    if req.SystolicPressure != nil { updates["systolic_pressure"] = *req.SystolicPressure }
+    if req.DiastolicPressure != nil { updates["diastolic_pressure"] = *req.DiastolicPressure }
+    if req.PulseWaveVelocity != nil { updates["pulse_wave_velocity"] = *req.PulseWaveVelocity }
+    if len(updates) == 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "no fields to update"}); return }
+    if err := h.Repository.UpdateCalculationAllowed(id, updates); err != nil { ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()}); return }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (h *Handler) FormCalculationAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
+    userID := currentuser.CurrentCreatorID()
+  
+    current, err := h.Repository.GetCalculationByID(id)
+    if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
+    if current.Status != ds.StatusDraft || current.CreatorID != userID {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "формирование доступно только для черновика создателя"})
+        return
+    }
+
+    groups, err := h.Repository.GetCalculationGroups(id)
+    if err != nil { ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()}); return }
+    if len(groups) == 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "в заявке нет услуг"}); return }
+    if err := h.Repository.FormCalculation(id, userID); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (h *Handler) CompleteCalculationAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
+    moderatorID := currentuser.CurrentModeratorID()
+
+    current, err := h.Repository.GetCalculationByID(id)
+    if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
+    if current.Status != ds.StatusFormed {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "завершение доступно только для сформированной заявки"})
+        return
+    }
+
+    groups, err := h.Repository.GetCalculationGroups(id)
+    if err != nil { ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()}); return }
+    var total float64
+    for _, g := range groups { total += g.GroupPrice }
+    if err := h.Repository.CompleteCalculation(id, moderatorID); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok", "total_price": total})
+}
+
+func (h *Handler) RejectCalculationAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
+    moderatorID := currentuser.CurrentModeratorID()
+   
+    current, err := h.Repository.GetCalculationByID(id)
+    if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
+    if current.Status != ds.StatusFormed {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "отклонение доступно только для сформированной заявки"})
+        return
+    }
+    if err := h.Repository.RejectCalculation(id, moderatorID); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (h *Handler) DeleteCalculationAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"}); return }
+    userID := currentuser.CurrentCreatorID()
+    current, err := h.Repository.GetCalculationByID(id)
+    if err != nil || current == nil { ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"}); return }
+    if current.Status != ds.StatusDraft || current.CreatorID != userID {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "удаление доступно только для черновика создателя"})
+        return
+    }
+    if err := h.Repository.SoftDeleteCalculation(id); err != nil { ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()}); return }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+type mmAddReq struct { GroupID int `json:"group_id"` }
+
+func (h *Handler) AddItemToDraftAPI(ctx *gin.Context) {
+    var req mmAddReq
+    if err := ctx.BindJSON(&req); err != nil || req.GroupID <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid group_id"}); return }
+    userID := currentuser.CurrentCreatorID()
+    calc, err := h.Repository.AddGroupToDraftByUser(userID, req.GroupID)
+    if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
+    _ = h.Repository.SetGroupSelected(req.GroupID, true)
+    ctx.JSON(http.StatusCreated, gin.H{"status": "ok", "calculation_id": calc.ID})
+}
+
+type mmDeleteReq struct { GroupID int `json:"group_id"` }
+
+func (h *Handler) RemoveItemFromDraftAPI(ctx *gin.Context) {
+    var req mmDeleteReq
+    if err := ctx.BindJSON(&req); err != nil || req.GroupID <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid group_id"}); return }
+    userID := currentuser.CurrentCreatorID()
+    calc, err := h.Repository.RemoveGroupFromDraftByUser(userID, req.GroupID)
+    if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
+    _ = h.Repository.SetGroupSelected(req.GroupID, false)
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok", "calculation_id": calc.ID})
+}
+
+type mmUpdateReq struct { GroupID int `json:"group_id"`; GroupPrice *float64 `json:"group_price"` }
+
+func (h *Handler) UpdateItemInDraftAPI(ctx *gin.Context) {
+    var req mmUpdateReq
+    if err := ctx.BindJSON(&req); err != nil || req.GroupID <= 0 { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid input"}); return }
+    userID := currentuser.CurrentCreatorID()
+    calc, err := h.Repository.GetDraftCalculationByUserID(userID)
+    if err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "no draft found"}); return }
+    if req.GroupPrice != nil {
+        if err := h.Repository.UpdateMMGroupPrice(calc.ID, req.GroupID, *req.GroupPrice); err != nil { ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()}); return }
+    } else {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "no updatable fields"}); return
+    }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (h *Handler) GetGroupsAPI(ctx *gin.Context) {
+    filters := repository.GroupFilters{
+        Title:    ctx.Query("title"),
+        AgeGroup: ctx.Query("age_group"),
+        Disease:  ctx.Query("disease_type"),
+    }
+    groups, err := h.Repository.GetGroupsFiltered(filters)
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+        return
+    }
+    for i := range groups {
+        groups[i].ImageURL = h.Storage.GetImageURLByID(groups[i].ID)
+    }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok", "data": groups})
+}
+
+func (h *Handler) GetGroupAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"})
+        return
+    }
+    g, err := h.Repository.GetCaviGroup(id)
+    if err != nil {
+        ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"})
+        return
+    }
+    g.ImageURL = h.Storage.GetImageURLByID(g.ID)
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok", "data": g})
+}
+
+type groupCreateReq struct {
+    Name        string   `json:"name"`
+    Description string   `json:"description"`
+    AgeGroup    string   `json:"age_group"`
+    DiseaseType *string  `json:"disease_type"`
+    BasePrice   float64  `json:"base_price"`
+}
+
+func (h *Handler) CreateGroupAPI(ctx *gin.Context) {
+    var req groupCreateReq
+    if err := ctx.BindJSON(&req); err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid json"})
+        return
+    }
+    if req.Name == "" || req.AgeGroup == "" {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "name and age_group are required"})
+        return
+    }
+    g := &ds.CaviGroup{
+        Name:        req.Name,
+        Description: req.Description,
+        AgeGroup:    req.AgeGroup,
+        DiseaseType: req.DiseaseType,
+        BasePrice:   req.BasePrice,
+        IsSelected:  false,
+        IsDeleted:   false,
+    }
+    if err := h.Repository.CreateGroup(g); err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+        return
+    }
+    g.ImageURL = h.Storage.GetImageURLByID(g.ID)
+    ctx.JSON(http.StatusCreated, gin.H{"status": "ok", "data": g})
+}
+
+type groupUpdateReq struct {
+    Name        *string  `json:"name"`
+    Description *string  `json:"description"`
+    AgeGroup    *string  `json:"age_group"`
+    DiseaseType *string `json:"disease_type"`
+    BasePrice   *float64 `json:"base_price"`
+    IsSelected  *bool    `json:"is_selected"`
+}
+
+func (h *Handler) UpdateGroupAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"})
+        return
+    }
+    var req groupUpdateReq
+    if err := ctx.BindJSON(&req); err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid json"})
+        return
+    }
+    updates := map[string]any{}
+    if req.Name != nil { updates["name"] = *req.Name }
+    if req.Description != nil { updates["description"] = *req.Description }
+    if req.AgeGroup != nil { updates["age_group"] = *req.AgeGroup }
+    if req.DiseaseType != nil { updates["disease_type"] = *req.DiseaseType }
+    if req.BasePrice != nil { updates["base_price"] = *req.BasePrice }
+    if req.IsSelected != nil { updates["is_selected"] = *req.IsSelected }
+    if len(updates) == 0 {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "no fields to update"})
+        return
+    }
+    if err := h.Repository.UpdateGroup(id, updates); err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+        return
+    }
+    g, _ := h.Repository.GetCaviGroup(id)
+    g.ImageURL = h.Storage.GetImageURLByID(g.ID)
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok", "data": g})
+}
+
+func (h *Handler) DeleteGroupAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"})
+        return
+    }
+    if err := h.Repository.SoftDeleteGroup(id); err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+        return
+    }
+    _ = h.Storage.DeleteGroupImage(context.Background(), id)
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok"})
+}
+
+func (h *Handler) UploadGroupImageAPI(ctx *gin.Context) {
+    id, err := strconv.Atoi(ctx.Param("id"))
+    if err != nil || id <= 0 {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"})
+        return
+    }
+    fileHeader, err := ctx.FormFile("image")
+    if err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "image is required"})
+        return
+    }
+    f, err := fileHeader.Open()
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+        return
+    }
+    defer f.Close()
+    contentType := fileHeader.Header.Get("Content-Type")
+    if contentType == "" {
+        contentType = "image/jpeg"
+    }
+    if err := h.Repository.UpdateGroup(id, map[string]any{"is_deleted": false}); err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+        return
+    }
+    if err := h.Storage.UploadGroupImage(ctx.Request.Context(), id, f, fileHeader.Size, contentType); err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+        return
+    }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok", "image_url": h.Storage.GetImageURLByID(id)})
+}
+
+func (h *Handler) GetCartIconAPI(ctx *gin.Context) {
+    userID := currentuser.CurrentCreatorID()
+    calc, err := h.Repository.GetDraftCalculationByUserID(userID)
+    if err != nil {
+        ctx.JSON(http.StatusOK, gin.H{"status": "ok", "calculation_id": 0, "items": 0})
+        return
+    }
+    count, err := h.Repository.CountItemsInDraft(calc.ID)
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+        return
+    }
+    ctx.JSON(http.StatusOK, gin.H{"status": "ok", "calculation_id": calc.ID, "items": count})
 }
 
 func NewHandler(cfg *config.Config, r *repository.Repository, s *storage.MinIOStorage) *Handler {

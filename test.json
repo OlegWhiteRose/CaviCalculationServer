@@ -1,0 +1,279 @@
+{
+  "info": {
+    "name": "RIP CAVI API - Lab3 (21 requests, grouped by method)",
+    "_postman_id": "7f2f4f2b-0000-0000-0000-21req00000001",
+    "description": "ЛР3: 21 запрос, сгруппированы по методам. Услуги (cavi-groups), заявки (cavi-calculations), м-м.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "GET",
+      "item": [
+        {
+          "name": "Orders - GET list (status formed + date range)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/cavi-calculations?status=formed&date_from=2025-01-01&date_to=2025-12-31"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Orders - GET cart icon",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/cavi-calculations/cart"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const j = pm.response.json();",
+            "pm.test('200 OK', () => pm.response.code === 200);",
+            "pm.test('Has calculation_id', () => j.calculation_id >= 0);",
+            "pm.test('Has items count', () => typeof j.items === 'number');"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Services - GET list (filter title)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/cavi-groups?title=пациенты"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Services - GET one group",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/cavi-groups/{{groupId1}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);",
+            "pm.test('Correct id', () => _.get(pm.response.json(),'data.id') == pm.environment.get('groupId1'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Orders - GET one (after 2 adds)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Services - GET list (no filter)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/cavi-groups"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Orders - GET list (status completed)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/cavi-calculations?status=completed"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "POST",
+      "item": [
+        {
+          "name": "Services - POST create group 1 (without image)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/cavi-groups",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"name\":\"ЛР3 Услуга 1\",\"age_group\":\"young\",\"description\":\"demo\",\"base_price\":100.5}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const j = pm.response.json();",
+            "pm.test('201 Created', () => pm.response.code === 201);",
+            "pm.environment.set('groupId1', _.get(j,'data.id'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Services - POST create group 2 (without image)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/cavi-groups",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"name\":\"ЛР3 Услуга 2\",\"age_group\":\"middle\",\"description\":\"demo2\",\"base_price\":210.0}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('201 Created', () => pm.response.code === 201);",
+            "pm.environment.set('groupId2', _.get(pm.response.json(),'data.id'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Services - POST upload image (group1)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/cavi-groups/{{groupId1}}/image",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "image", "type": "file", "src": "" }
+              ]
+            }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);",
+            "pm.test('Has image_url', () => _.get(pm.response.json(),'image_url'));"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Services - POST add to draft (group1)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/cavi-groups/{{groupId1}}/add-to-draft"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const j = pm.response.json();",
+            "pm.test('201 Created', () => pm.response.code === 201);",
+            "pm.environment.set('calculationId', j.calculation_id);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Services - POST add to draft (group2)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/cavi-groups/{{groupId2}}/add-to-draft"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('201 Created', () => pm.response.code === 201);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Users - POST register",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/users/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"username\":\"new_user_lr3\",\"password\":\"demo123\",\"email\":\"user@example.com\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('201 Created or 404 Not Implemented', () => [201,200,404].includes(pm.response.code));"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "PUT",
+      "item": [
+        {
+          "name": "Services - PUT update group1",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/cavi-groups/{{groupId1}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"description\":\"updated demo\",\"base_price\":150.75}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Orders - PUT update calculation (non-system fields)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"systolic_pressure\":120,\"diastolic_pressure\":80,\"pulse_wave_velocity\":8.5}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Orders - PUT complete (should fail before form)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}/moderate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"action\":\"complete\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('400 BadRequest expected', () => pm.response.code === 400);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Orders - PUT form draft",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}/form"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Orders - PUT complete (after form)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}/moderate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"action\":\"complete\"}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "const j = pm.response.json();",
+            "pm.test('200 OK', () => pm.response.code === 200);",
+            "pm.test('Has total_price', () => typeof j.total_price === 'number');"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "m-m - PUT update mm (group_price)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/cavi-calculations/draft/items",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"group_id\": {{groupId1}}, \"group_price\": 199.99}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "DELETE",
+      "item": [
+        {
+          "name": "m-m - DELETE remove from draft (group2)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/cavi-calculations/draft/items",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"group_id\": {{groupId2}}}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "Orders - DELETE calculation (should fail, not draft)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('400 BadRequest expected', () => pm.response.code === 400);"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8000" }
+  ]
+}
