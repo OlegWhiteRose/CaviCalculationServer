@@ -9,13 +9,12 @@ type CaviGroup struct {
 	ID          int       `gorm:"primaryKey"`
 	Name        string    `gorm:"type:varchar(255);not null"`
 	Description string    `gorm:"type:text"`
+	IsSelected  bool      `gorm:"type:boolean not null;default:false"`
 	IsDeleted   bool      `gorm:"type:boolean not null;default:false"`
 	ImageURL    string    `gorm:"type:varchar(500)"`
 	AgeGroup    string    `gorm:"type:varchar(100);not null"`
 	DiseaseType *string   `gorm:"type:varchar(100)"`
 	BasePrice   float64   `gorm:"type:decimal(10,3);not null;default:0.000"`
-	CreatedAt   time.Time `gorm:"not null"`
-	UpdatedAt   time.Time `gorm:"not null"`
 }
 
 func (CaviGroup) TableName() string {
@@ -32,7 +31,6 @@ type CaviCalculation struct {
 	SystolicPressure    *int
 	DiastolicPressure   *int
 	PulseWaveVelocity   *float64
-	CalculatedCAVI      *float64   `gorm:"type:decimal(5,3)"`
 	CreatorID           int        `gorm:"not null"`
 	
 	Creator             *User                    `gorm:"foreignKey:CreatorID"`
@@ -48,11 +46,8 @@ type CaviCalculationGroup struct {
 	ID             int       `gorm:"primaryKey"`
 	CalculationID  int       `gorm:"not null;uniqueIndex:idx_calculation_group"`
 	GroupID        int       `gorm:"not null;uniqueIndex:idx_calculation_group"`
-	OrderPosition  int       `gorm:"not null;default:1"`
-	IsMainGroup    bool      `gorm:"type:boolean;default:false"`
 	GroupPrice     float64   `gorm:"type:decimal(10,3);not null;default:0.000"`
 	CalculatedCAVI float64   `gorm:"-"`
-	CreatedAt      time.Time `gorm:"not null"`
 	
 	Group *CaviGroup `gorm:"foreignKey:GroupID"`
 }
@@ -62,17 +57,10 @@ func (CaviCalculationGroup) TableName() string {
 }
 
 type User struct {
-	ID          int       `gorm:"primaryKey"`
-	Username    string    `gorm:"type:varchar(150);unique;not null"`
-	FirstName   string    `gorm:"type:varchar(150);not null;default:''"`
-	LastName    string    `gorm:"type:varchar(150);not null;default:''"`
-	Email       string    `gorm:"type:varchar(254);not null;default:''"`
-	Password    string    `gorm:"type:varchar(128);not null"`
-	IsStaff     bool      `gorm:"type:boolean;not null;default:false"`
-	IsActive    bool      `gorm:"type:boolean;not null;default:true"`
-	IsSuperuser bool      `gorm:"type:boolean;not null;default:false"`
-	DateJoined  time.Time `gorm:"not null"`
-	LastLogin   *time.Time
+	ID       int    `gorm:"primaryKey"`
+	Username string `gorm:"type:varchar(150);unique;not null"`
+	Password string `gorm:"type:varchar(128);not null"`
+	IsModerator  bool   `gorm:"type:boolean;not null;default:false"`
 }
 
 const (

@@ -45,11 +45,10 @@ func StartServer() {
 
 	r.GET("/", handler.GetCaviGroups)
 	r.GET("/cavi-group/:id", handler.GetCaviGroup)
-	r.GET("/cavi-calculation", handler.GetCaviCalculation)
+	r.GET("/calculations/:id", handler.GetCaviCalculationByID)
 	
 	r.POST("/add-group", handler.AddGroupToCalculation)
-	// r.POST("/remove-group", handler.RemoveGroupFromCalculation)
-	r.POST("/delete-calculation", handler.SoftDeleteCalculation)
+	r.POST("/calculations/:id/delete", handler.SoftDeleteCalculationByID)
 
 	serverAddr := fmt.Sprintf("%s:%d", cfg.CaviServerHost, cfg.CaviServerPort)
 	log.Printf("Server starting on %s", serverAddr)

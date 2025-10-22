@@ -75,26 +75,28 @@ func (h *Handler) GetCaviGroups(ctx *gin.Context) {
 		groups[i].ImageURL = h.Storage.GetImageURLByID(groups[i].ID)
 	}
 
-	userID := 3
-	groupsInCart := make(map[int]bool)
-	cartItemsCount := 0
-	calculation, err := h.Repository.GetDraftCalculationByUserID(userID)
-	if err == nil {
-		calculationGroups, err := h.Repository.GetCalculationGroups(calculation.ID)
-		if err == nil {
-			for _, calcGroup := range calculationGroups {
-				groupsInCart[calcGroup.GroupID] = true
-			}
-			cartItemsCount = len(calculationGroups)
-		}
-	}
+    groupsInCart := make(map[int]bool)
+    cartItemsCount := 0
+    for _, g := range groups {
+        if g.IsSelected {
+            groupsInCart[g.ID] = true
+            cartItemsCount++
+        }
+    }
+
+    userID := 3
+    calculationID := 0
+    if calculation, err := h.Repository.GetDraftCalculationByUserID(userID); err == nil {
+        calculationID = calculation.ID
+    }
 
 	ctx.HTML(http.StatusOK, "index.html", gin.H{
-		"time":   time.Now().Format("15:04:05"),
-		"caviGroups": groups,
+		"time":          time.Now().Format("15:04:05"),
+		"caviGroups":    groups,
 		"caviGroupTitle": searchTitle,
-		"groupsInCart": groupsInCart,
+		"groupsInCart":  groupsInCart,
 		"cartItemsCount": cartItemsCount,
+		"calculationID": calculationID,
 	})
 }
 
@@ -124,7 +126,7 @@ func (h *Handler) GetCaviGroupsJSON(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"caviGroups": groups,
+		"caviGroups":    groups,
 		"caviGroupTitle": searchTitle,
 	})
 }
@@ -132,14 +134,30 @@ func (h *Handler) GetCaviGroupsJSON(ctx *gin.Context) {
 func (h *Handler) GetCaviCalculation(ctx *gin.Context) {
 	userID := 3
 
-	calculation, err := h.Repository.GetDraftCalculationByUserID(userID)
+	calculation, err := h.Repository.CreateDraftCalculation(userID)
 	if err != nil {
-		calculation, err = h.Repository.CreateDraftCalculation(userID)
-		if err != nil {
-			logrus.Error(err)
-			ctx.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": "Failed to create calculation"})
-			return
-		}
+		logrus.Error(err)
+		ctx.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": "Failed to create calculation"})
+		return
+	}
+
+	ctx.Redirect(http.StatusFound, "/calculations/"+strconv.Itoa(calculation.ID))
+}
+
+func (h *Handler) GetCaviCalculationByID(ctx *gin.Context) {
+	idStr := ctx.Param("id")
+	id, err := strconv.Atoi(idStr)
+	if err != nil {
+		logrus.Error(err)
+		ctx.HTML(http.StatusBadRequest, "error.html", gin.H{"error": "Invalid calculation ID"})
+		return
+	}
+
+	calculation, err := h.Repository.GetCalculationByID(id)
+	if err != nil || calculation == nil {
+		logrus.Error(err)
+		ctx.HTML(http.StatusNotFound, "error.html", gin.H{"error": "Calculation not found"})
+		return
 	}
 
 	if calculation.Status == ds.StatusDeleted {
@@ -161,7 +179,7 @@ func (h *Handler) GetCaviCalculation(ctx *gin.Context) {
 	for i := range calculationGroups {
 		if calculationGroups[i].Group != nil {
 			calculationGroups[i].Group.ImageURL = h.Storage.GetImageURLByID(calculationGroups[i].Group.ID)
-			
+
 			cavi := ds.CalculateCAVI(
 				calculationGroups[i].Group,
 				defaultSystolic,
@@ -218,7 +236,11 @@ func (h *Handler) AddGroupToCalculation(ctx *gin.Context) {
 		logrus.Error(err)
 	}
 
-	ctx.Redirect(http.StatusFound, "/")
+    if err := h.Repository.SetGroupSelected(groupID, true); err != nil {
+        logrus.Error(err)
+    }
+
+    ctx.Redirect(http.StatusFound, "/")
 }
 
 func (h *Handler) RemoveGroupFromCalculation(ctx *gin.Context) {
@@ -226,7 +248,13 @@ func (h *Handler) RemoveGroupFromCalculation(ctx *gin.Context) {
 	groupID, err := strconv.Atoi(groupIDStr)
 	if err != nil {
 		logrus.Error(err)
-		ctx.Redirect(http.StatusFound, "/cavi-calculation")
+
+		userID := 3
+		if calc, e := h.Repository.GetDraftCalculationByUserID(userID); e == nil {
+			ctx.Redirect(http.StatusFound, "/calculations/"+strconv.Itoa(calc.ID))
+			return
+		}
+		ctx.Redirect(http.StatusFound, "/")
 		return
 	}
 
@@ -235,6 +263,7 @@ func (h *Handler) RemoveGroupFromCalculation(ctx *gin.Context) {
 	calculation, err := h.Repository.GetDraftCalculationByUserID(userID)
 	if err != nil {
 		logrus.Error(err)
+		ctx.Redirect(http.StatusFound, "/")
 		ctx.Redirect(http.StatusFound, "/cavi-calculation")
 		return
 	}
@@ -244,25 +273,28 @@ func (h *Handler) RemoveGroupFromCalculation(ctx *gin.Context) {
 		logrus.Error(err)
 	}
 
-	ctx.Redirect(http.StatusFound, "/cavi-calculation")
+	ctx.Redirect(http.StatusFound, "/calculations/"+strconv.Itoa(calculation.ID))
 }
 
-func (h *Handler) SoftDeleteCalculation(ctx *gin.Context) {
-	userID := 3
+func (h *Handler) SoftDeleteCalculationByID(ctx *gin.Context) {
+    idStr := ctx.Param("id")
+    id, err := strconv.Atoi(idStr)
+    if err != nil {
+        logrus.Error(err)
+        ctx.HTML(http.StatusBadRequest, "error.html", gin.H{"error": "Invalid calculation ID"})
+        return
+    }
 
-	calculation, err := h.Repository.GetDraftCalculationByUserID(userID)
-	if err != nil {
-		logrus.Error(err)
-		ctx.HTML(http.StatusNotFound, "error.html", gin.H{"error": "Calculation not found"})
-		return
-	}
+    if err := h.Repository.UnselectAllGroups(); err != nil {
+        logrus.Error(err)
+    }
 
-	err = h.Repository.SoftDeleteCalculation(calculation.ID)
-	if err != nil {
-		logrus.Error(err)
-		ctx.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": "Failed to delete calculation"})
-		return
-	}
+    err = h.Repository.SoftDeleteCalculation(id)
+    if err != nil {
+        logrus.Error(err)
+        ctx.HTML(http.StatusInternalServerError, "error.html", gin.H{"error": "Failed to delete calculation"})
+        return
+    }
 
-	ctx.HTML(http.StatusNotFound, "error.html", gin.H{"error": "Calculation deleted"})
+    ctx.Redirect(http.StatusFound, "/")
 }

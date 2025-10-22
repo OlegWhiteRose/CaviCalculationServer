@@ -2,12 +2,13 @@ package repository
 
 import (
 	"fmt"
+	"gorm.io/gorm"
 	"rip/internal/app/ds"
 )
 
 func (r *Repository) GetCaviGroups() ([]ds.CaviGroup, error) {
 	var groups []ds.CaviGroup
-	err := r.db.Where("is_deleted = false").Find(&groups).Error
+	err := r.db.Find(&groups).Error
 	if err != nil {
 		return nil, err
 	}
@@ -19,7 +20,7 @@ func (r *Repository) GetCaviGroups() ([]ds.CaviGroup, error) {
 
 func (r *Repository) GetCaviGroup(id int) (ds.CaviGroup, error) {
 	group := ds.CaviGroup{}
-	err := r.db.Where("id = ? AND is_deleted = false", id).First(&group).Error
+	err := r.db.Where("id = ?", id).First(&group).Error
 	if err != nil {
 		return ds.CaviGroup{}, err
 	}
@@ -28,7 +29,7 @@ func (r *Repository) GetCaviGroup(id int) (ds.CaviGroup, error) {
 
 func (r *Repository) GetCaviGroupsByTitle(title string) ([]ds.CaviGroup, error) {
 	var groups []ds.CaviGroup
-	err := r.db.Where("name ILIKE ? AND is_deleted = false", "%"+title+"%").Find(&groups).Error
+	err := r.db.Where("name ILIKE ?", "%"+title+"%").Find(&groups).Error
 	if err != nil {
 		return nil, err
 	}
@@ -77,16 +78,9 @@ func (r *Repository) AddGroupToCalculation(calculationID, groupID int) error {
 		return err
 	}
 
-	var maxOrder int
-	err = r.db.Model(&ds.CaviCalculationGroup{}).Where("calculation_id = ?", calculationID).Select("COALESCE(MAX(order_position), 0)").Scan(&maxOrder).Error
-	if err != nil {
-		return err
-	}
-
 	calculationGroup := ds.CaviCalculationGroup{
 		CalculationID: calculationID,
 		GroupID:       groupID,
-		OrderPosition: maxOrder + 1,
 		GroupPrice:    group.BasePrice,
 	}
 
@@ -101,7 +95,16 @@ func (r *Repository) RemoveGroupFromCalculation(calculationID, groupID int) erro
 
 func (r *Repository) GetCalculationGroups(calculationID int) ([]ds.CaviCalculationGroup, error) {
 	var groups []ds.CaviCalculationGroup
-	err := r.db.Preload("Group").Where("calculation_id = ?", calculationID).Order("order_position").Find(&groups).Error
+	err := r.db.Preload("Group").Where("calculation_id = ?", calculationID).Find(&groups).Error
 	return groups, err
 }
 
+func (r *Repository) SetGroupSelected(groupID int, selected bool) error {
+	return r.db.Model(&ds.CaviGroup{}).Where("id = ?", groupID).Update("is_selected", selected).Error
+}
+
+func (r *Repository) UnselectAllGroups() error {
+	return r.db.Session(&gorm.Session{AllowGlobalUpdate: true}).
+		Model(&ds.CaviGroup{}).
+		Update("is_selected", false).Error
+}

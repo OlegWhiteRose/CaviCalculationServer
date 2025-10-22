@@ -47,7 +47,11 @@
         </div>
 
         {{ if gt .cartItemsCount 0 }}
+        {{ if gt .calculationID 0 }}
+        <a href="/calculations/{{ .calculationID }}" class="request-link">
+        {{ else }}
         <a href="/cavi-calculation" class="request-link">
+        {{ end }}
             <div class="request-link-content">
                 <img src="/static/img/request-link-icon.svg" alt="Расчёт" class="request-link-icon">
                 <div class="request-link-number">{{ .cartItemsCount }}</div>

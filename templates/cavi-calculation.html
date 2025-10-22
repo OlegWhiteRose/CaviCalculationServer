@@ -74,7 +74,7 @@
                     {{ end }}
                     {{ if .caviCalculation.CalculationGroups }}
                     <div class="delete-calculation-section">
-                        <form action="/delete-calculation" method="POST">
+                        <form action="/calculations/{{ .caviCalculation.ID }}/delete" method="POST">
                             <button type="submit" class="btn-delete-calculation">Удалить заявку</button>
                         </form>
                     </div>
