@@ -24,7 +24,7 @@
                 {{ range .caviGroups }}
                 <div class="card">
                     <div class="content">
-                        <img src="{{ .ImageURL }}" alt="{{ .Name }}">
+                        <img src="{{ .ImageURL }}" alt="{{ .Name }}" onerror="this.onerror=null; this.src='{{ $.defaultImage }}';">
                         <div class="details">
                             <div class="title">{{ .Name }}</div>
                             <div class="text">{{ .Description }}</div>

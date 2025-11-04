@@ -36,19 +36,19 @@ func (r *Repository) GetCaviGroupsByTitle(title string) ([]ds.CaviGroup, error) 
 	return groups, nil
 }
 
-func (r *Repository) GetDraftCalculationByUserID(userID int) (*ds.CaviCalculation, error) {
+func (r *Repository) GetDraftCalculationByUserLogin(userLogin string) (*ds.CaviCalculation, error) {
 	var calculation ds.CaviCalculation
-	err := r.db.Where("creator_id = ? AND status = ?", userID, ds.StatusDraft).First(&calculation).Error
+	err := r.db.Where("creator_login = ? AND status = ?", userLogin, ds.StatusDraft).First(&calculation).Error
 	if err != nil {
 		return nil, err
 	}
 	return &calculation, nil
 }
 
-func (r *Repository) CreateDraftCalculation(userID int) (*ds.CaviCalculation, error) {
+func (r *Repository) CreateDraftCalculation(userLogin string) (*ds.CaviCalculation, error) {
 	calculation := ds.CaviCalculation{
-		Status:    ds.StatusDraft,
-		CreatorID: userID,
+		Status:       ds.StatusDraft,
+		CreatorLogin: userLogin,
 	}
 	err := r.db.Create(&calculation).Error
 	if err != nil {
@@ -81,7 +81,7 @@ func (r *Repository) AddGroupToCalculation(calculationID, groupID int) error {
 	calculationGroup := ds.CaviCalculationGroup{
 		CalculationID: calculationID,
 		GroupID:       groupID,
-		GroupPrice:    group.BasePrice,
+		CAVIIndex:     0.000,
 	}
 
 	err = r.db.Create(&calculationGroup).Error
@@ -195,28 +195,28 @@ func (r *Repository) UpdateCalculationAllowed(id int, updates map[string]any) er
 	return r.db.Model(&ds.CaviCalculation{}).Where("id = ? AND status != ?", id, ds.StatusDeleted).Updates(updates).Error
 }
 
-func (r *Repository) FormCalculation(id int, creatorID int) error {
+func (r *Repository) FormCalculation(id int, creatorLogin string) error {
 	return r.db.Model(&ds.CaviCalculation{}).
-		Where("id = ? AND creator_id = ? AND status = ?", id, creatorID, ds.StatusDraft).
+		Where("id = ? AND creator_login = ? AND status = ?", id, creatorLogin, ds.StatusDraft).
 		Updates(map[string]any{"status": ds.StatusFormed, "formed_at": gorm.Expr("NOW()")}).Error
 }
 
-func (r *Repository) CompleteCalculation(id int, moderatorID int) error {
+func (r *Repository) CompleteCalculation(id int, moderatorLogin string) error {
 	return r.db.Model(&ds.CaviCalculation{}).
 		Where("id = ? AND status = ?", id, ds.StatusFormed).
-		Updates(map[string]any{"status": ds.StatusCompleted, "completed_at": gorm.Expr("NOW()"), "moderator_id": moderatorID}).Error
+		Updates(map[string]any{"status": ds.StatusCompleted, "completed_at": gorm.Expr("NOW()"), "moderator_login": moderatorLogin}).Error
 }
 
-func (r *Repository) RejectCalculation(id int, moderatorID int) error {
+func (r *Repository) RejectCalculation(id int, moderatorLogin string) error {
 	return r.db.Model(&ds.CaviCalculation{}).
 		Where("id = ? AND status = ?", id, ds.StatusFormed).
-		Updates(map[string]any{"status": ds.StatusRejected, "completed_at": gorm.Expr("NOW()"), "moderator_id": moderatorID}).Error
+		Updates(map[string]any{"status": ds.StatusRejected, "completed_at": gorm.Expr("NOW()"), "moderator_login": moderatorLogin}).Error
 }
 
-func (r *Repository) AddGroupToDraftByUser(userID, groupID int) (*ds.CaviCalculation, error) {
-	calc, err := r.GetDraftCalculationByUserID(userID)
+func (r *Repository) AddGroupToDraftByUser(userLogin string, groupID int) (*ds.CaviCalculation, error) {
+	calc, err := r.GetDraftCalculationByUserLogin(userLogin)
 	if err != nil {
-		calc, err = r.CreateDraftCalculation(userID)
+		calc, err = r.CreateDraftCalculation(userLogin)
 		if err != nil {
 			return nil, err
 		}
@@ -227,8 +227,8 @@ func (r *Repository) AddGroupToDraftByUser(userID, groupID int) (*ds.CaviCalcula
 	return calc, nil
 }
 
-func (r *Repository) RemoveGroupFromDraftByUser(userID, groupID int) (*ds.CaviCalculation, error) {
-	calc, err := r.GetDraftCalculationByUserID(userID)
+func (r *Repository) RemoveGroupFromDraftByUser(userLogin string, groupID int) (*ds.CaviCalculation, error) {
+	calc, err := r.GetDraftCalculationByUserLogin(userLogin)
 	if err != nil {
 		return nil, err
 	}
@@ -238,8 +238,8 @@ func (r *Repository) RemoveGroupFromDraftByUser(userID, groupID int) (*ds.CaviCa
 	return calc, nil
 }
 
-func (r *Repository) UpdateMMGroupPrice(calculationID, groupID int, price float64) error {
+func (r *Repository) UpdateCAVIIndex(calculationID, groupID int, caviIndex float64) error {
 	return r.db.Model(&ds.CaviCalculationGroup{}).
 		Where("calculation_id = ? AND group_id = ?", calculationID, groupID).
-		Update("group_price", price).Error
+		Update("cavi_index", caviIndex).Error
 }

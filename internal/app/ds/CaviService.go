@@ -27,14 +27,14 @@ type CaviCalculation struct {
 	CreatedAt           time.Time  `gorm:"not null"`
 	FormedAt            *time.Time
 	CompletedAt         *time.Time
-	ModeratorID         *int
+	ModeratorLogin      *string    `gorm:"type:varchar(150)"`
 	SystolicPressure    *int
 	DiastolicPressure   *int
 	PulseWaveVelocity   *float64
-	CreatorID           int        `gorm:"not null"`
+	CreatorLogin        string     `gorm:"type:varchar(150);not null"`
 	
-	Creator             *User                    `gorm:"foreignKey:CreatorID"`
-	Moderator           *User                    `gorm:"foreignKey:ModeratorID"`
+	Creator             *User                    `gorm:"foreignKey:CreatorLogin;references:Username"`
+	Moderator           *User                    `gorm:"foreignKey:ModeratorLogin;references:Username"`
 	CalculationGroups []CaviCalculationGroup `gorm:"foreignKey:CalculationID"`
 	
 	CreatorUsername    string `gorm:"-"`
@@ -50,7 +50,7 @@ type CaviCalculationGroup struct {
 	ID             int       `gorm:"primaryKey"`
 	CalculationID  int       `gorm:"not null;uniqueIndex:idx_calculation_group"`
 	GroupID        int       `gorm:"not null;uniqueIndex:idx_calculation_group"`
-	GroupPrice     float64   `gorm:"type:decimal(10,3);not null;default:0.000"`
+	CAVIIndex      float64   `gorm:"column:cavi_index;type:decimal(10,3);not null;default:0.000"`
 	CalculatedCAVI float64   `gorm:"-"`
 	
 	Group *CaviGroup `gorm:"foreignKey:GroupID"`

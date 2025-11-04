@@ -1,9 +1,9 @@
 package currentuser
 
-func CurrentCreatorID() int {
-	return 3
+func CurrentCreatorLogin() string {
+	return "user1"
 }
 
-func CurrentModeratorID() int {
-	return 1
+func CurrentModeratorLogin() string {
+	return "admin"
 }

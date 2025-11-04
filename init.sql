@@ -23,10 +23,10 @@ CREATE TABLE IF NOT EXISTS cavi_calculations (
     id SERIAL PRIMARY KEY,
     status VARCHAR(50) NOT NULL DEFAULT 'draft',
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    creator_id INTEGER NOT NULL REFERENCES auth_user(id),
+    creator_login VARCHAR(150) NOT NULL REFERENCES auth_user(username),
     formed_at TIMESTAMP WITH TIME ZONE,
     completed_at TIMESTAMP WITH TIME ZONE,
-    moderator_id INTEGER REFERENCES auth_user(id),
+    moderator_login VARCHAR(150) REFERENCES auth_user(username),
     systolic_pressure INTEGER,
     diastolic_pressure INTEGER,
     pulse_wave_velocity DECIMAL(5,2)
@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS cavi_calculation_groups (
     id SERIAL PRIMARY KEY,
     calculation_id INTEGER NOT NULL REFERENCES cavi_calculations(id),
     group_id INTEGER NOT NULL REFERENCES cavi_groups(id),
-    group_price DECIMAL(10,3) NOT NULL DEFAULT 0.000,
+    cavi_index DECIMAL(10,3) NOT NULL DEFAULT 0.000,
     UNIQUE(calculation_id, group_id)
 );
 
@@ -46,14 +46,14 @@ CREATE INDEX IF NOT EXISTS idx_cavi_groups_disease_type ON cavi_groups(disease_t
 CREATE INDEX IF NOT EXISTS idx_cavi_groups_is_selected ON cavi_groups(is_selected);
 
 CREATE INDEX IF NOT EXISTS idx_cavi_calculations_status ON cavi_calculations(status);
-CREATE INDEX IF NOT EXISTS idx_cavi_calculations_creator ON cavi_calculations(creator_id);
+CREATE INDEX IF NOT EXISTS idx_cavi_calculations_creator ON cavi_calculations(creator_login);
 
 CREATE INDEX IF NOT EXISTS idx_cavi_calculation_groups_calc ON cavi_calculation_groups(calculation_id);
 CREATE INDEX IF NOT EXISTS idx_cavi_calculation_groups_group ON cavi_calculation_groups(group_id);
 
 INSERT INTO auth_user (username, password, is_moderator) VALUES
 ('admin', 'pbkdf2_sha256$260000$hash$hash', TRUE),
-('moderator', 'pbkdf2_sha256$260000$hash$hash', FALSE),
+('moderator', 'pbkdf2_sha256$260000$hash$hash', TRUE),
 ('user1', 'pbkdf2_sha256$260000$hash$hash', FALSE);
 
 INSERT INTO cavi_groups (name, description, age_group, disease_type, base_price, image_url) VALUES

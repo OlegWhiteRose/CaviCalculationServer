@@ -21,7 +21,7 @@
             <div class="cavi-group-page">
                 <div class="card large">
                     <div class="content">
-                        <img src="{{ .caviGroup.ImageURL }}" alt="{{ .caviGroup.Name }}">
+                        <img src="{{ .caviGroup.ImageURL }}" alt="{{ .caviGroup.Name }}" onerror="this.onerror=null; this.src='{{ $.defaultImage }}';">
                         <div class="details">
                             <div class="title">{{ .caviGroup.Name }}</div>
                             <div class="text">{{ .caviGroup.Description }}</div>

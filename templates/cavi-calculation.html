@@ -44,7 +44,7 @@
                         {{ range .caviCalculation.CalculationGroups }}
                         <div class="service-item">
                             <div class="service-info">
-                                <img src="{{ .Group.ImageURL }}" alt="{{ .Group.Name }}" class="service-image">
+                                <img src="{{ .Group.ImageURL }}" alt="{{ .Group.Name }}" class="service-image" onerror="this.onerror=null; this.src='{{ $.defaultImage }}';">
                                 <div class="service-details">
                                     <h3>{{ .Group.Name }}</h3>
                                     <p class="service-subtitle">{{ .Group.Description }}</p>

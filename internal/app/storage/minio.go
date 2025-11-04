@@ -99,6 +99,16 @@ func (s *MinIOStorage) GetImageURLByID(id int) string {
 	return fmt.Sprintf("http://%s/%s/diagrams/%d.jpg", s.endpoint, s.bucketName, id)
 }
 
+func (s *MinIOStorage) GetImageURLByIDWithDefault(id int) string {
+	imageURL := s.GetImageURLByID(id)
+	// В HTML-шаблоне или на фронте будет использован onerror для фолбэка на дефолтное изображение
+	return imageURL
+}
+
+func (s *MinIOStorage) GetDefaultImageURL() string {
+	return "/static/img/default.jpg"
+}
+
 func (s *MinIOStorage) UploadGroupImage(ctx context.Context, id int, reader io.Reader, size int64, contentType string) error {
 	objectName := fmt.Sprintf("diagrams/%d.jpg", id)
 	opts := minio.PutObjectOptions{ContentType: contentType}
