@@ -51,10 +51,12 @@ CREATE INDEX IF NOT EXISTS idx_cavi_calculations_creator ON cavi_calculations(cr
 CREATE INDEX IF NOT EXISTS idx_cavi_calculation_groups_calc ON cavi_calculation_groups(calculation_id);
 CREATE INDEX IF NOT EXISTS idx_cavi_calculation_groups_group ON cavi_calculation_groups(group_id);
 
+-- Пароль для всех: "password" (bcrypt hash)
 INSERT INTO auth_user (username, password, is_moderator) VALUES
-('admin', 'pbkdf2_sha256$260000$hash$hash', TRUE),
-('moderator', 'pbkdf2_sha256$260000$hash$hash', TRUE),
-('user1', 'pbkdf2_sha256$260000$hash$hash', FALSE);
+('admin', '$2a$10$6oER9B4AS/blFurhubTwROQDItENaRT/Pf7l27Pkqj3p4TMNhjWP6', TRUE),
+('moderator', '$2a$10$6oER9B4AS/blFurhubTwROQDItENaRT/Pf7l27Pkqj3p4TMNhjWP6', TRUE),
+('user1', '$2a$10$6oER9B4AS/blFurhubTwROQDItENaRT/Pf7l27Pkqj3p4TMNhjWP6', FALSE)
+ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, is_moderator = EXCLUDED.is_moderator;
 
 INSERT INTO cavi_groups (name, description, age_group, disease_type, base_price, image_url) VALUES
 ('Молодые пациенты (до 35 лет)', 'Эластичные сосуды с низким уровнем жесткости', 'young', NULL, 0.000, ''),

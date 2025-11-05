@@ -195,10 +195,14 @@ func (r *Repository) UpdateCalculationAllowed(id int, updates map[string]any) er
 	return r.db.Model(&ds.CaviCalculation{}).Where("id = ? AND status != ?", id, ds.StatusDeleted).Updates(updates).Error
 }
 
-func (r *Repository) FormCalculation(id int, creatorLogin string) error {
+func (r *Repository) FormCalculation(id int, moderatorLogin string) error {
 	return r.db.Model(&ds.CaviCalculation{}).
-		Where("id = ? AND creator_login = ? AND status = ?", id, creatorLogin, ds.StatusDraft).
-		Updates(map[string]any{"status": ds.StatusFormed, "formed_at": gorm.Expr("NOW()")}).Error
+		Where("id = ? AND status = ?", id, ds.StatusDraft).
+		Updates(map[string]any{
+			"status":          ds.StatusFormed,
+			"formed_at":       gorm.Expr("NOW()"),
+			"moderator_login": moderatorLogin,
+		}).Error
 }
 
 func (r *Repository) CompleteCalculation(id int, moderatorLogin string) error {

@@ -1,0 +1,349 @@
+{
+	"info": {
+		"_postman_id": "lab4-test-collection",
+		"name": "LAB4 - Тестирование аутентификации и авторизации",
+		"description": "Коллекция для проверки JWT, Redis и ролевой модели",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "1. Гость: GET заявки (401)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 401\", function () {",
+							"    pm.response.to.have.status(401);",
+							"});",
+							"",
+							"pm.test(\"Response contains error message\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"fail\");",
+							"    pm.expect(jsonData.message).to.include(\"токен\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [],
+				"url": {
+					"raw": "http://localhost:8000/api/cavi-calculations",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "cavi-calculations"]
+				},
+				"description": "Гость без токена не может получить список заявок"
+			},
+			"response": []
+		},
+		{
+			"name": "2. Логин user1",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response contains token\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"ok\");",
+							"    pm.expect(jsonData.token).to.exist;",
+							"    pm.environment.set(\"user_token\", jsonData.token);",
+							"});",
+							"",
+							"pm.test(\"User is not moderator\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.user.is_moderator).to.eql(false);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"user1\",\n    \"password\": \"password\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/auth/login",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "auth", "login"]
+				},
+				"description": "Логин обычного пользователя"
+			},
+			"response": []
+		},
+		{
+			"name": "3. User1: GET заявки (200, свои)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is ok\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"ok\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{user_token}}"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8000/api/cavi-calculations",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "cavi-calculations"]
+				},
+				"description": "User1 получает свои заявки"
+			},
+			"response": []
+		},
+		{
+			"name": "4. User1: PUT модерация (403)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 403\", function () {",
+							"    pm.response.to.have.status(403);",
+							"});",
+							"",
+							"pm.test(\"Response contains access denied\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"fail\");",
+							"    pm.expect(jsonData.message).to.include(\"модератора\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{user_token}}"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"action\": \"complete\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/cavi-calculations/1/moderate",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "cavi-calculations", "1", "moderate"]
+				},
+				"description": "User1 не может модерировать заявки"
+			},
+			"response": []
+		},
+		{
+			"name": "5. Логин moderator",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response contains token\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"ok\");",
+							"    pm.expect(jsonData.token).to.exist;",
+							"    pm.environment.set(\"moderator_token\", jsonData.token);",
+							"});",
+							"",
+							"pm.test(\"User is moderator\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.user.is_moderator).to.eql(true);",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n    \"username\": \"moderator\",\n    \"password\": \"password\"\n}"
+				},
+				"url": {
+					"raw": "http://localhost:8000/api/auth/login",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "auth", "login"]
+				},
+				"description": "Логин модератора"
+			},
+			"response": []
+		},
+		{
+			"name": "6. Moderator: GET все заявки (200)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Response is ok\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"ok\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{moderator_token}}"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8000/api/cavi-calculations",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "cavi-calculations"]
+				},
+				"description": "Модератор видит все заявки"
+			},
+			"response": []
+		},
+		{
+			"name": "7. User1: Logout",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 200\", function () {",
+							"    pm.response.to.have.status(200);",
+							"});",
+							"",
+							"pm.test(\"Logout successful\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"ok\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{user_token}}"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8000/api/auth/logout",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "auth", "logout"]
+				},
+				"description": "User1 выходит из системы"
+			},
+			"response": []
+		},
+		{
+			"name": "8. User1: GET после logout (401)",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"pm.test(\"Status code is 401\", function () {",
+							"    pm.response.to.have.status(401);",
+							"});",
+							"",
+							"pm.test(\"Session not found\", function () {",
+							"    var jsonData = pm.response.json();",
+							"    pm.expect(jsonData.status).to.eql(\"fail\");",
+							"});"
+						],
+						"type": "text/javascript"
+					}
+				}
+			],
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Authorization",
+						"value": "Bearer {{user_token}}"
+					}
+				],
+				"url": {
+					"raw": "http://localhost:8000/api/cavi-calculations",
+					"protocol": "http",
+					"host": ["localhost"],
+					"port": "8000",
+					"path": ["api", "cavi-calculations"]
+				},
+				"description": "После logout токен user1 не работает"
+			},
+			"response": []
+		}
+	]
+}

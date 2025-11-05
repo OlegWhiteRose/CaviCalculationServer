@@ -3,15 +3,20 @@ package api
 import (
 	"fmt"
 	"log"
+	_ "rip/docs"
 	"rip/internal/app/config"
 	"rip/internal/app/dsn"
 	"rip/internal/app/handler"
+	"rip/internal/app/middleware"
+	redisClient "rip/internal/app/redis"
 	"rip/internal/app/repository"
 	"rip/internal/app/storage"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 func StartServer() {
@@ -37,44 +42,81 @@ func StartServer() {
 		logrus.Error("MinIO storage initialization error:", err)
 	}
 
-	handler := handler.NewHandler(cfg, repo, minioStorage)
+	// Инициализация Redis
+	redis, err := redisClient.NewRedisClient()
+	if err != nil {
+		logrus.Fatal("Failed to initialize Redis:", err)
+	}
+	log.Println("Redis connected successfully")
+
+	// Инициализация handler с Redis
+	h := handler.NewHandler(cfg, repo, minioStorage, redis)
+
+	// Инициализация auth middleware
+	authMiddleware := middleware.NewAuthMiddleware(redis)
 
 	r := gin.Default()
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./resources")
 
-	r.GET("/", handler.GetCaviGroups)
-	r.GET("/cavi-group/:id", handler.GetCaviGroup)
-	r.GET("/calculations/:id", handler.GetCaviCalculationByID)
+	// HTML роуты (без авторизации для просмотра)
+	r.GET("/", h.GetCaviGroups)
+	r.GET("/cavi-group/:id", h.GetCaviGroup)
+	r.GET("/calculations/:id", h.GetCaviCalculationByID)
 	
-	r.POST("/add-group", handler.AddGroupToCalculation)
-	r.POST("/calculations/:id/delete", handler.SoftDeleteCalculationByID)
+	// HTML роуты требующие авторизации
+	r.POST("/add-group", h.AddGroupToCalculation)
+	r.POST("/calculations/:id/delete", h.SoftDeleteCalculationByID)
+
+	// Swagger UI
+	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api")
 	{
-		api.GET("/cavi-groups", handler.GetGroupsAPI)
-		api.GET("/cavi-groups/:id", handler.GetGroupAPI)
-		api.POST("/cavi-groups", handler.CreateGroupAPI)
-		api.PUT("/cavi-groups/:id", handler.UpdateGroupAPI)
-		api.DELETE("/cavi-groups/:id", handler.DeleteGroupAPI)
-		api.POST("/cavi-groups/:id/image", handler.UploadGroupImageAPI)
-		api.POST("/cavi-groups/:id/add-to-draft", handler.AddGroupToDraftFromGroupAPI)
+		// Аутентификация (публичные роуты)
+		auth := api.Group("/auth")
+		{
+			auth.POST("/register", h.Register)
+			auth.POST("/login", h.Login)
+			auth.POST("/logout", authMiddleware.RequireAuth(), h.Logout)
+			auth.GET("/me", authMiddleware.RequireAuth(), h.GetCurrentUser)
+		}
 
-		api.GET("/cavi-calculations/draft", handler.GetCartIconAPI)
-		api.GET("/cavi-calculations", handler.ListCalculationsAPI)
-		api.GET("/cavi-calculations/:id", handler.GetCalculationAPI)
-		api.PUT("/cavi-calculations/:id", handler.UpdateCalculationAPI)
-		api.PUT("/cavi-calculations/:id/form", handler.FormCalculationAPI)
-		api.PUT("/cavi-calculations/:id/moderate", handler.ModerateCalculationAPI)
-		api.DELETE("/cavi-calculations/:id", handler.DeleteCalculationAPI)
+		// Группы CAVI (гость - только GET, пользователь - GET, модератор - все)
+		groups := api.Group("/cavi-groups")
+		{
+			// Публичные (гость)
+			groups.GET("", h.GetGroupsAPI)
+			groups.GET("/:id", h.GetGroupAPI)
+			
+			// Только для модератора
+			groups.POST("", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.CreateGroupAPI)
+			groups.PUT("/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UpdateGroupAPI)
+			groups.DELETE("/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.DeleteGroupAPI)
+			groups.POST("/:id/image", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UploadGroupImageAPI)
+			
+			// Для авторизованных пользователей
+			groups.POST("/:id/add-to-draft", authMiddleware.RequireAuth(), h.AddGroupToDraftFromGroupAPI)
+		}
 
-		api.DELETE("/cavi-calculations/draft/groups", handler.RemoveItemFromDraftAPI)
-		api.PUT("/cavi-calculations/draft/groups", handler.UpdateItemInDraftAPI)
-
-		api.POST("/users/register", handler.UsersRegisterAPI)
-		api.POST("/users/login", handler.UsersLoginAPI)
-		api.POST("/users/logout", handler.UsersLogoutAPI)
-		api.GET("/users/me", handler.UsersMeAPI)
+		// Заявки CAVI
+		calculations := api.Group("/cavi-calculations")
+		{
+			// Для авторизованных пользователей
+			calculations.GET("/draft", authMiddleware.RequireAuth(), h.GetCartIconAPI)
+			calculations.GET("", authMiddleware.RequireAuth(), h.ListCalculationsAPI)
+			calculations.GET("/:id", authMiddleware.RequireAuth(), h.GetCalculationAPI)
+			calculations.PUT("/:id", authMiddleware.RequireAuth(), h.UpdateCalculationAPI)
+			calculations.PUT("/:id/form", authMiddleware.RequireAuth(), h.FormCalculationAPI)
+			calculations.DELETE("/:id", authMiddleware.RequireAuth(), h.DeleteCalculationAPI)
+			
+			// Только для модератора
+			calculations.PUT("/:id/moderate", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.ModerateCalculationAPI)
+			
+			// Работа с черновиком
+			calculations.DELETE("/draft/groups", authMiddleware.RequireAuth(), h.RemoveItemFromDraftAPI)
+			calculations.PUT("/draft/groups", authMiddleware.RequireAuth(), h.UpdateItemInDraftAPI)
+		}
 	}
 
 	serverAddr := fmt.Sprintf("%s:%d", cfg.CaviServerHost, cfg.CaviServerPort)

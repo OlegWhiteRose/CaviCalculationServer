@@ -1,0 +1,248 @@
+package handler
+
+import (
+	"context"
+	"net/http"
+	"rip/internal/app/auth"
+	"rip/internal/app/ds"
+	"rip/internal/app/middleware"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/crypto/bcrypt"
+)
+
+// RegisterRequest структура для регистрации
+// @Description Данные для регистрации нового пользователя
+type RegisterRequest struct {
+	Username string `json:"username" binding:"required" example:"newuser"`
+	Password string `json:"password" binding:"required" example:"password123"`
+}
+
+// LoginRequest структура для логина
+// @Description Данные для входа в систему
+type LoginRequest struct {
+	Username string `json:"username" binding:"required" example:"user1"`
+	Password string `json:"password" binding:"required" example:"password"`
+}
+
+// LoginResponse структура успешного ответа при логине
+type LoginResponse struct {
+	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	User  struct {
+		Username    string `json:"username" example:"user1"`
+		IsModerator bool   `json:"is_moderator" example:"false"`
+	} `json:"user"`
+}
+
+// RegisterResponse структура успешного ответа при регистрации
+type RegisterResponse struct {
+	Message string `json:"message" example:"пользователь успешно зарегистрирован"`
+	User    struct {
+		Username    string `json:"username" example:"newuser"`
+		IsModerator bool   `json:"is_moderator" example:"false"`
+	} `json:"user"`
+}
+
+// ErrorResponse структура ответа с ошибкой
+type ErrorResponse struct {
+	Message string `json:"message" example:"неверные учетные данные"`
+}
+
+// SuccessResponse структура успешного ответа
+type SuccessResponse struct {
+	Message string `json:"message" example:"операция выполнена успешно"`
+}
+
+// UserInfoResponse структура ответа с информацией о пользователе
+type UserInfoResponse struct {
+	User struct {
+		Username    string `json:"username" example:"user1"`
+		IsModerator bool   `json:"is_moderator" example:"false"`
+	} `json:"user"`
+}
+
+// Register регистрирует нового пользователя
+// @Summary      Регистрация нового пользователя
+// @Description  Создает нового пользователя в системе
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body RegisterRequest true "Данные для регистрации"
+// @Success      201 {object} RegisterResponse "Успешная регистрация"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      409 {object} ErrorResponse "Пользователь уже существует"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/auth/register [post]
+func (h *Handler) Register(ctx *gin.Context) {
+	var req RegisterRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "неверные данные"})
+		return
+	}
+
+	// Проверяем, существует ли пользователь
+	var existingUser ds.User
+	if err := h.Repository.DB().Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+		ctx.JSON(http.StatusConflict, gin.H{"message": "пользователь уже существует"})
+		return
+	}
+
+	// Хешируем пароль
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при создании пользователя"})
+		return
+	}
+
+	// Создаем пользователя
+	user := ds.User{
+		Username:    req.Username,
+		Password:    string(hashedPassword),
+		IsModerator: false,
+	}
+
+	if err := h.Repository.DB().Create(&user).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при сохранении пользователя"})
+		return
+	}
+
+	ctx.JSON(http.StatusCreated, gin.H{
+		"message": "пользователь успешно зарегистрирован",
+		"user": gin.H{
+			"username":     user.Username,
+			"is_moderator": user.IsModerator,
+		},
+	})
+}
+
+// Login авторизует пользователя
+// @Summary      Вход в систему
+// @Description  Аутентифицирует пользователя и возвращает JWT токен
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body LoginRequest true "Данные для входа"
+// @Success      200 {object} LoginResponse "Успешный вход"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      401 {object} ErrorResponse "Неверные учетные данные"
+// @Router       /api/auth/login [post]
+func (h *Handler) Login(ctx *gin.Context) {
+	var req LoginRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		logrus.Errorf("Login: failed to bind JSON: %v", err)
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "неверные данные"})
+		return
+	}
+
+	logrus.Infof("Login attempt for user: %s", req.Username)
+
+	// Ищем пользователя
+	var user ds.User
+	if err := h.Repository.DB().Where("username = ?", req.Username).First(&user).Error; err != nil {
+		logrus.Errorf("Login: user not found: %s, error: %v", req.Username, err)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "неверные учетные данные"})
+		return
+	}
+
+	logrus.Infof("Login: user found: %s, checking password", req.Username)
+
+	// Проверяем пароль
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
+		logrus.Errorf("Login: password mismatch for user: %s, error: %v", req.Username, err)
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "неверные учетные данные"})
+		return
+	}
+
+	logrus.Infof("Login: successful login for user: %s", req.Username)
+
+	// Генерируем JWT токен
+	token, err := auth.GenerateToken(user.Username, user.IsModerator)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при создании токена"})
+		return
+	}
+
+	// Сохраняем сессию в Redis (24 часа)
+	sessionKey := "session:" + user.Username
+	c, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	sessionData := user.Username
+	if err := h.Redis.Set(c, sessionKey, sessionData, 24*time.Hour); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при создании сессии"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"token": token,
+		"user": gin.H{
+			"username":     user.Username,
+			"is_moderator": user.IsModerator,
+		},
+	})
+}
+
+// Logout удаляет сессию пользователя
+// @Summary      Выход из системы
+// @Description  Удаляет сессию пользователя из Redis
+// @Tags         auth
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200 {object} SuccessResponse "Успешный выход"
+// @Failure      401 {object} ErrorResponse "Требуется аутентификация"
+// @Failure      500 {object} ErrorResponse "Ошибка при удалении сессии"
+// @Router       /api/auth/logout [post]
+func (h *Handler) Logout(ctx *gin.Context) {
+	username, exists := middleware.GetUsername(ctx)
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "требуется аутентификация"})
+		return
+	}
+
+	// Удаляем сессию из Redis
+	sessionKey := "session:" + username
+	c, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	if err := h.Redis.Delete(c, sessionKey); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при удалении сессии"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "успешный выход из системы",
+	})
+}
+
+// GetCurrentUser возвращает информацию о текущем пользователе
+// @Summary      Получить текущего пользователя
+// @Description  Возвращает информацию о текущем авторизованном пользователе
+// @Tags         auth
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200 {object} UserInfoResponse "Информация о пользователе"
+// @Failure      401 {object} ErrorResponse "Требуется аутентификация"
+// @Failure      404 {object} ErrorResponse "Пользователь не найден"
+// @Router       /api/auth/me [get]
+func (h *Handler) GetCurrentUser(ctx *gin.Context) {
+	username, exists := middleware.GetUsername(ctx)
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "требуется аутентификация"})
+		return
+	}
+
+	var user ds.User
+	if err := h.Repository.DB().Where("username = ?", username).First(&user).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"message": "пользователь не найден"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"user": gin.H{
+			"username":     user.Username,
+			"is_moderator": user.IsModerator,
+		},
+	})
+}

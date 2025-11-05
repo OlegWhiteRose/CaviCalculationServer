@@ -19,3 +19,8 @@ func New(dsn string) (*Repository, error) {
 		db: db,
 	}, nil
 }
+
+// DB возвращает экземпляр базы данных для прямых запросов
+func (r *Repository) DB() *gorm.DB {
+	return r.db
+}

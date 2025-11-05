@@ -1,0 +1,385 @@
+basePath: /
+definitions:
+  ds.CaviCalculation:
+    properties:
+      calculationGroups:
+        items:
+          $ref: '#/definitions/ds.CaviCalculationGroup'
+        type: array
+      completedAt:
+        type: string
+      createdAt:
+        type: string
+      creator:
+        $ref: '#/definitions/ds.User'
+      creatorLogin:
+        type: string
+      creatorUsername:
+        type: string
+      diastolicPressure:
+        type: integer
+      formedAt:
+        type: string
+      id:
+        type: integer
+      moderator:
+        $ref: '#/definitions/ds.User'
+      moderatorLogin:
+        type: string
+      moderatorUsername:
+        type: string
+      pulseWaveVelocity:
+        format: float64
+        type: number
+      resultCount:
+        type: integer
+      status:
+        type: string
+      systolicPressure:
+        type: integer
+    type: object
+  ds.CaviCalculationGroup:
+    properties:
+      calculatedCAVI:
+        type: number
+      calculationID:
+        type: integer
+      caviindex:
+        type: number
+      group:
+        $ref: '#/definitions/ds.CaviGroup'
+      groupID:
+        type: integer
+      id:
+        type: integer
+    type: object
+  ds.CaviGroup:
+    properties:
+      ageGroup:
+        type: string
+      basePrice:
+        type: number
+      description:
+        type: string
+      diseaseType:
+        type: string
+      id:
+        type: integer
+      imageURL:
+        type: string
+      isDeleted:
+        type: boolean
+      isSelected:
+        type: boolean
+      name:
+        type: string
+    type: object
+  ds.User:
+    properties:
+      id:
+        type: integer
+      isModerator:
+        type: boolean
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  handler.CalculationDetailResponse:
+    properties:
+      data:
+        $ref: '#/definitions/ds.CaviCalculation'
+    type: object
+  handler.CalculationsListResponse:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/ds.CaviCalculation'
+        type: array
+    type: object
+  handler.ErrorResponse:
+    properties:
+      message:
+        example: неверные учетные данные
+        type: string
+    type: object
+  handler.LoginRequest:
+    description: Данные для входа в систему
+    properties:
+      password:
+        example: password
+        type: string
+      username:
+        example: user1
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handler.LoginResponse:
+    properties:
+      token:
+        example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+        type: string
+      user:
+        properties:
+          is_moderator:
+            example: false
+            type: boolean
+          username:
+            example: user1
+            type: string
+        type: object
+    type: object
+  handler.RegisterRequest:
+    description: Данные для регистрации нового пользователя
+    properties:
+      password:
+        example: password123
+        type: string
+      username:
+        example: newuser
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  handler.RegisterResponse:
+    properties:
+      message:
+        example: пользователь успешно зарегистрирован
+        type: string
+      user:
+        properties:
+          is_moderator:
+            example: false
+            type: boolean
+          username:
+            example: newuser
+            type: string
+        type: object
+    type: object
+  handler.SuccessResponse:
+    properties:
+      message:
+        example: операция выполнена успешно
+        type: string
+    type: object
+  handler.UserInfoResponse:
+    properties:
+      user:
+        properties:
+          is_moderator:
+            example: false
+            type: boolean
+          username:
+            example: user1
+            type: string
+        type: object
+    type: object
+host: localhost:8000
+info:
+  contact:
+    email: support@cavi.com
+    name: API Support
+  description: API для управления заявками и группами CAVI с поддержкой аутентификации
+    и авторизации
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: CAVI Calculator API
+  version: "1.0"
+paths:
+  /api/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Аутентифицирует пользователя и возвращает JWT токен
+      parameters:
+      - description: Данные для входа
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный вход
+          schema:
+            $ref: '#/definitions/handler.LoginResponse'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Неверные учетные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Вход в систему
+      tags:
+      - auth
+  /api/auth/logout:
+    post:
+      description: Удаляет сессию пользователя из Redis
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Успешный выход
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Ошибка при удалении сессии
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Выход из системы
+      tags:
+      - auth
+  /api/auth/me:
+    get:
+      description: Возвращает информацию о текущем авторизованном пользователе
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Информация о пользователе
+          schema:
+            $ref: '#/definitions/handler.UserInfoResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Пользователь не найден
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить текущего пользователя
+      tags:
+      - auth
+  /api/auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Создает нового пользователя в системе
+      parameters:
+      - description: Данные для регистрации
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Успешная регистрация
+          schema:
+            $ref: '#/definitions/handler.RegisterResponse'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "409":
+          description: Пользователь уже существует
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Регистрация нового пользователя
+      tags:
+      - auth
+  /api/cavi-calculations:
+    get:
+      description: Возвращает список заявок. Обычные пользователи видят только свои
+        заявки, модераторы - все
+      parameters:
+      - description: Фильтр по статусу
+        in: query
+        name: status
+        type: string
+      - description: Дата от (YYYY-MM-DD)
+        in: query
+        name: date_from
+        type: string
+      - description: Дата до (YYYY-MM-DD)
+        in: query
+        name: date_to
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список заявок
+          schema:
+            $ref: '#/definitions/handler.CalculationsListResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить список заявок
+      tags:
+      - calculations
+  /api/cavi-calculations/{id}:
+    get:
+      description: Возвращает детальную информацию о заявке. Обычные пользователи
+        могут видеть только свои заявки
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Информация о заявке
+          schema:
+            $ref: '#/definitions/handler.CalculationDetailResponse'
+        "400":
+          description: Неверный ID
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Доступ запрещен
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Заявка не найдена
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить заявку по ID
+      tags:
+      - calculations
+securityDefinitions:
+  BearerAuth:
+    description: 'Введите токен в формате: Bearer {token}'
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"
