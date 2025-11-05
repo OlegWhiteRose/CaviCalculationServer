@@ -85,6 +85,12 @@ definitions:
       username:
         type: string
     type: object
+  handler.AddToDraftResponse:
+    properties:
+      calculation_id:
+        example: 1
+        type: integer
+    type: object
   handler.CalculationDetailResponse:
     properties:
       data:
@@ -97,10 +103,25 @@ definitions:
           $ref: '#/definitions/ds.CaviCalculation'
         type: array
     type: object
+  handler.CartIconResponse:
+    properties:
+      calculation_id:
+        example: 1
+        type: integer
+      items:
+        example: 3
+        type: integer
+    type: object
   handler.ErrorResponse:
     properties:
       message:
         example: неверные учетные данные
+        type: string
+    type: object
+  handler.ImageUploadResponse:
+    properties:
+      image_url:
+        example: http://localhost:8000/storage/groups/1.jpg
         type: string
     type: object
   handler.LoginRequest:
@@ -118,6 +139,9 @@ definitions:
     type: object
   handler.LoginResponse:
     properties:
+      message:
+        example: аутентификация успешна
+        type: string
       token:
         example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
         type: string
@@ -165,8 +189,35 @@ definitions:
         example: операция выполнена успешно
         type: string
     type: object
+  handler.UpdateProfileRequest:
+    properties:
+      password:
+        example: newpassword123
+        type: string
+      username:
+        example: newusername
+        type: string
+    type: object
+  handler.UpdateProfileResponse:
+    properties:
+      message:
+        example: профиль успешно обновлен
+        type: string
+      user:
+        properties:
+          is_moderator:
+            example: false
+            type: boolean
+          username:
+            example: newusername
+            type: string
+        type: object
+    type: object
   handler.UserInfoResponse:
     properties:
+      message:
+        example: данные пользователя
+        type: string
       user:
         properties:
           is_moderator:
@@ -176,6 +227,56 @@ definitions:
             example: user1
             type: string
         type: object
+    type: object
+  handler.calcUpdateReq:
+    properties:
+      diastolic_pressure:
+        type: integer
+      pulse_wave_velocity:
+        type: number
+      systolic_pressure:
+        type: integer
+    type: object
+  handler.groupCreateReq:
+    properties:
+      age_group:
+        type: string
+      description:
+        type: string
+      disease_type:
+        type: string
+      name:
+        type: string
+    type: object
+  handler.groupUpdateReq:
+    properties:
+      age_group:
+        type: string
+      description:
+        type: string
+      disease_type:
+        type: string
+      is_selected:
+        type: boolean
+      name:
+        type: string
+    type: object
+  handler.mmDeleteReq:
+    properties:
+      group_id:
+        type: integer
+    type: object
+  handler.mmUpdateReq:
+    properties:
+      cavi_index:
+        type: number
+      group_id:
+        type: integer
+    type: object
+  handler.moderateReq:
+    properties:
+      action:
+        type: string
     type: object
 host: localhost:8000
 info:
@@ -267,6 +368,45 @@ paths:
       summary: Получить текущего пользователя
       tags:
       - auth
+    put:
+      consumes:
+      - application/json
+      description: Обновляет username и/или пароль текущего пользователя
+      parameters:
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.UpdateProfileRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Профиль успешно обновлен
+          schema:
+            $ref: '#/definitions/handler.UpdateProfileResponse'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "409":
+          description: Имя пользователя уже занято
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить профиль
+      tags:
+      - auth
   /api/auth/register:
     post:
       consumes:
@@ -339,6 +479,42 @@ paths:
       tags:
       - calculations
   /api/cavi-calculations/{id}:
+    delete:
+      description: Удаляет заявку-черновик (доступно только создателю)
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Заявка удалена
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Заявка не найдена
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить заявку
+      tags:
+      - calculations
     get:
       description: Возвращает детальную информацию о заявке. Обычные пользователи
         могут видеть только свои заявки
@@ -376,6 +552,461 @@ paths:
       summary: Получить заявку по ID
       tags:
       - calculations
+    put:
+      consumes:
+      - application/json
+      description: Обновляет поля заявки (систолическое давление, диастолическое давление,
+        скорость пульсовой волны)
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.calcUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленная заявка
+          schema:
+            $ref: '#/definitions/ds.CaviCalculation'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить заявку
+      tags:
+      - calculations
+  /api/cavi-calculations/{id}/form:
+    put:
+      description: Изменяет статус заявки с draft на formed (только для модераторов)
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Заявка сформирована
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Требуется роль модератора
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Заявка не найдена
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Сформировать заявку
+      tags:
+      - calculations
+  /api/cavi-calculations/{id}/moderate:
+    put:
+      consumes:
+      - application/json
+      description: Изменяет статус заявки с formed на completed или rejected (только
+        для модераторов)
+      parameters:
+      - description: ID заявки
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Действие (complete или reject)
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.moderateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Заявка обработана
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Требуется роль модератора
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Заявка не найдена
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Завершить/отклонить заявку
+      tags:
+      - calculations
+  /api/cavi-calculations/draft:
+    get:
+      description: Возвращает ID черновика и количество групп в нем
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Данные корзины
+          schema:
+            $ref: '#/definitions/handler.CartIconResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Получить иконку корзины
+      tags:
+      - calculations
+  /api/cavi-calculations/draft/groups:
+    delete:
+      consumes:
+      - application/json
+      description: Удаляет группу пациентов из заявки-черновика
+      parameters:
+      - description: ID группы для удаления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.mmDeleteReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: ID заявки
+          schema:
+            additionalProperties:
+              type: integer
+            type: object
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить группу из черновика
+      tags:
+      - many-to-many
+    put:
+      consumes:
+      - application/json
+      description: Изменяет значение CAVI индекса для группы в заявке-черновике
+      parameters:
+      - description: ID группы и новый CAVI индекс
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.mmUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: CAVI индекс обновлен
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить CAVI индекс в черновике
+      tags:
+      - many-to-many
+  /api/cavi-groups:
+    get:
+      description: Возвращает список групп пациентов с возможностью фильтрации
+      parameters:
+      - description: Поиск по названию
+        in: query
+        name: title
+        type: string
+      - description: Фильтр по возрастной группе
+        in: query
+        name: age_group
+        type: string
+      - description: Фильтр по типу заболевания
+        in: query
+        name: disease_type
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Список групп
+          schema:
+            items:
+              $ref: '#/definitions/ds.CaviGroup'
+            type: array
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Получить список групп
+      tags:
+      - groups
+    post:
+      consumes:
+      - application/json
+      description: Создает новую группу пациентов (только для модераторов)
+      parameters:
+      - description: Данные новой группы
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.groupCreateReq'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Созданная группа
+          schema:
+            $ref: '#/definitions/ds.CaviGroup'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Требуется роль модератора
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Создать группу
+      tags:
+      - groups
+  /api/cavi-groups/{id}:
+    delete:
+      description: Удаляет группу пациентов (soft-delete, только для модераторов)
+      parameters:
+      - description: ID группы
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Группа удалена
+          schema:
+            $ref: '#/definitions/handler.SuccessResponse'
+        "400":
+          description: Неверный ID
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Требуется роль модератора
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Удалить группу
+      tags:
+      - groups
+    get:
+      description: Возвращает детальную информацию о группе пациентов
+      parameters:
+      - description: ID группы
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Информация о группе
+          schema:
+            $ref: '#/definitions/ds.CaviGroup'
+        "400":
+          description: Неверный ID
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "404":
+          description: Группа не найдена
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      summary: Получить группу по ID
+      tags:
+      - groups
+    put:
+      consumes:
+      - application/json
+      description: Обновляет данные группы пациентов (только для модераторов)
+      parameters:
+      - description: ID группы
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Данные для обновления
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/handler.groupUpdateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Обновленная группа
+          schema:
+            $ref: '#/definitions/ds.CaviGroup'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Требуется роль модератора
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Обновить группу
+      tags:
+      - groups
+  /api/cavi-groups/{id}/add-to-draft:
+    post:
+      description: Добавляет группу пациентов в заявку-черновик пользователя
+      parameters:
+      - description: ID группы
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: ID заявки
+          schema:
+            $ref: '#/definitions/handler.AddToDraftResponse'
+        "400":
+          description: Неверный ID
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "401":
+          description: Требуется аутентификация
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Добавить группу в черновик
+      tags:
+      - groups
+  /api/cavi-groups/{id}/image:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Загружает или обновляет изображение группы (только для модераторов)
+      parameters:
+      - description: ID группы
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Файл изображения
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: URL изображения
+          schema:
+            $ref: '#/definitions/handler.ImageUploadResponse'
+        "400":
+          description: Неверные данные
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "403":
+          description: Требуется роль модератора
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/handler.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Загрузить изображение группы
+      tags:
+      - groups
 securityDefinitions:
   BearerAuth:
     description: 'Введите токен в формате: Bearer {token}'

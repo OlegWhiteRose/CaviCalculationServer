@@ -29,8 +29,9 @@ type LoginRequest struct {
 
 // LoginResponse структура успешного ответа при логине
 type LoginResponse struct {
-	Token string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-	User  struct {
+	Message string `json:"message" example:"аутентификация успешна"`
+	Token   string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	User    struct {
 		Username    string `json:"username" example:"user1"`
 		IsModerator bool   `json:"is_moderator" example:"false"`
 	} `json:"user"`
@@ -57,7 +58,8 @@ type SuccessResponse struct {
 
 // UserInfoResponse структура ответа с информацией о пользователе
 type UserInfoResponse struct {
-	User struct {
+	Message string `json:"message" example:"данные пользователя"`
+	User    struct {
 		Username    string `json:"username" example:"user1"`
 		IsModerator bool   `json:"is_moderator" example:"false"`
 	} `json:"user"`
@@ -176,6 +178,7 @@ func (h *Handler) Login(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
+		"message": "аутентификация успешна",
 		"token": token,
 		"user": gin.H{
 			"username":     user.Username,
@@ -240,6 +243,92 @@ func (h *Handler) GetCurrentUser(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
+		"message": "данные пользователя",
+		"user": gin.H{
+			"username":     user.Username,
+			"is_moderator": user.IsModerator,
+		},
+	})
+}
+
+// UpdateProfileRequest структура для обновления профиля
+type UpdateProfileRequest struct {
+	Username string `json:"username" example:"newusername"`
+	Password string `json:"password" example:"newpassword123"`
+}
+
+// UpdateProfileResponse структура ответа при обновлении профиля
+type UpdateProfileResponse struct {
+	Message string `json:"message" example:"профиль успешно обновлен"`
+	User    struct {
+		Username    string `json:"username" example:"newusername"`
+		IsModerator bool   `json:"is_moderator" example:"false"`
+	} `json:"user"`
+}
+
+// UpdateProfile обновляет профиль текущего пользователя
+// @Summary      Обновить профиль
+// @Description  Обновляет username и/или пароль текущего пользователя
+// @Tags         auth
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body UpdateProfileRequest true "Данные для обновления"
+// @Success      200 {object} UpdateProfileResponse "Профиль успешно обновлен"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      401 {object} ErrorResponse "Требуется аутентификация"
+// @Failure      409 {object} ErrorResponse "Имя пользователя уже занято"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/auth/me [put]
+func (h *Handler) UpdateProfile(ctx *gin.Context) {
+	username, exists := middleware.GetUsername(ctx)
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "требуется аутентификация"})
+		return
+	}
+
+	var req UpdateProfileRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "неверные данные"})
+		return
+	}
+
+	// Получаем текущего пользователя
+	var user ds.User
+	if err := h.Repository.DB().Where("username = ?", username).First(&user).Error; err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"message": "пользователь не найден"})
+		return
+	}
+
+	// Обновляем username если указан
+	if req.Username != "" && req.Username != user.Username {
+		// Проверяем, не занято ли новое имя
+		var existingUser ds.User
+		if err := h.Repository.DB().Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+			ctx.JSON(http.StatusConflict, gin.H{"message": "имя пользователя уже занято"})
+			return
+		}
+		user.Username = req.Username
+	}
+
+	// Обновляем пароль если указан
+	if req.Password != "" {
+		hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
+		if err != nil {
+			ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при хешировании пароля"})
+			return
+		}
+		user.Password = string(hashedPassword)
+	}
+
+	// Сохраняем изменения
+	if err := h.Repository.DB().Save(&user).Error; err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при сохранении пользователя"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "профиль успешно обновлен",
 		"user": gin.H{
 			"username":     user.Username,
 			"is_moderator": user.IsModerator,

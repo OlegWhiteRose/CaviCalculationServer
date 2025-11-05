@@ -45,8 +45,34 @@ type userLoginReq struct {
 	Password string `json:"password"`
 }
 
-// Old userstate handlers removed - now using auth.go handlers (Register, Login, Logout, GetCurrentUser)
+// CartIconResponse структура ответа для корзины
+type CartIconResponse struct {
+	CalculationID int `json:"calculation_id" example:"1"`
+	Items         int `json:"items" example:"3"`
+}
 
+// AddToDraftResponse структура ответа при добавлении в черновик
+type AddToDraftResponse struct {
+	CalculationID int `json:"calculation_id" example:"1"`
+}
+
+// ImageUploadResponse структура ответа при загрузке изображения
+type ImageUploadResponse struct {
+	ImageURL string `json:"image_url" example:"http://localhost:8000/storage/groups/1.jpg"`
+}
+
+// AddGroupToDraftFromGroupAPI добавляет группу в черновик
+// @Summary      Добавить группу в черновик
+// @Description  Добавляет группу пациентов в заявку-черновик пользователя
+// @Tags         groups
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id path int true "ID группы"
+// @Success      201 {object} AddToDraftResponse "ID заявки"
+// @Failure      400 {object} ErrorResponse "Неверный ID"
+// @Failure      401 {object} ErrorResponse "Требуется аутентификация"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-groups/{id}/add-to-draft [post]
 func (h *Handler) AddGroupToDraftFromGroupAPI(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
@@ -67,6 +93,21 @@ type moderateReq struct {
 	Action string `json:"action"`
 }
 
+// ModerateCalculationAPI завершает или отклоняет заявку
+// @Summary      Завершить/отклонить заявку
+// @Description  Изменяет статус заявки с formed на completed или rejected (только для модераторов)
+// @Tags         calculations
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "ID заявки"
+// @Param        request body moderateReq true "Действие (complete или reject)"
+// @Success      200 {object} SuccessResponse "Заявка обработана"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      403 {object} ErrorResponse "Требуется роль модератора"
+// @Failure      404 {object} ErrorResponse "Заявка не найдена"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-calculations/{id}/moderate [put]
 func (h *Handler) ModerateCalculationAPI(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
@@ -93,14 +134,14 @@ func (h *Handler) ModerateCalculationAPI(ctx *gin.Context) {
 			ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 			return
 		}
-		ctx.JSON(http.StatusOK, gin.H{})
+		ctx.JSON(http.StatusOK, gin.H{"message": "операция выполнена успешно"})
 		return
 	}
 	if err := h.Repository.RejectCalculation(id, moderatorLogin); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "операция выполнена успешно"})
 }
 
 // ListCalculationsAPI возвращает список заявок
@@ -119,7 +160,7 @@ func (h *Handler) ModerateCalculationAPI(ctx *gin.Context) {
 func (h *Handler) ListCalculationsAPI(ctx *gin.Context) {
 	username, _ := ctx.Get("username")
 	isModerator, _ := ctx.Get("is_moderator")
-	
+
 	status := ctx.Query("status")
 	df := ctx.Query("date_from")
 	dt := ctx.Query("date_to")
@@ -160,7 +201,7 @@ func (h *Handler) ListCalculationsAPI(ctx *gin.Context) {
 		groups, _ := h.Repository.GetCalculationGroups(filteredItems[i].ID)
 		filteredItems[i].ResultCount = len(groups)
 	}
-	ctx.JSON(http.StatusOK, gin.H{"data": filteredItems})
+	ctx.JSON(http.StatusOK, filteredItems)
 }
 
 // GetCalculationAPI возвращает детальную информацию о заявке
@@ -179,7 +220,7 @@ func (h *Handler) ListCalculationsAPI(ctx *gin.Context) {
 func (h *Handler) GetCalculationAPI(ctx *gin.Context) {
 	username, _ := ctx.Get("username")
 	isModerator, _ := ctx.Get("is_moderator")
-	
+
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid id"})
@@ -194,7 +235,7 @@ func (h *Handler) GetCalculationAPI(ctx *gin.Context) {
 		ctx.JSON(http.StatusNotFound, gin.H{"message": "not found"})
 		return
 	}
-	
+
 	// Проверка прав доступа: обычный пользователь может видеть только свои заявки
 	if !isModerator.(bool) && calc.CreatorLogin != username.(string) {
 		ctx.JSON(http.StatusForbidden, gin.H{"message": "доступ запрещен"})
@@ -226,7 +267,7 @@ func (h *Handler) GetCalculationAPI(ctx *gin.Context) {
 	}
 	calc.CalculationGroups = groups
 	calc.ResultCount = len(groups)
-	ctx.JSON(http.StatusOK, gin.H{"data": calc, "default_image": h.Storage.GetDefaultImageURL()})
+	ctx.JSON(http.StatusOK, calc)
 }
 
 type calcUpdateReq struct {
@@ -235,6 +276,20 @@ type calcUpdateReq struct {
 	PulseWaveVelocity *float64 `json:"pulse_wave_velocity"`
 }
 
+// UpdateCalculationAPI обновляет заявку
+// @Summary      Обновить заявку
+// @Description  Обновляет поля заявки (систолическое давление, диастолическое давление, скорость пульсовой волны)
+// @Tags         calculations
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "ID заявки"
+// @Param        request body calcUpdateReq true "Данные для обновления"
+// @Success      200 {object} ds.CaviCalculation "Обновленная заявка"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      401 {object} ErrorResponse "Требуется аутентификация"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-calculations/{id} [put]
 func (h *Handler) UpdateCalculationAPI(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
@@ -264,9 +319,37 @@ func (h *Handler) UpdateCalculationAPI(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{})
+
+	// Возвращаем обновленную заявку
+	calc, err := h.Repository.GetCalculationDetailed(id)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
+		return
+	}
+	if calc.Creator != nil {
+		calc.CreatorUsername = calc.Creator.Username
+	}
+	if calc.Moderator != nil {
+		calc.ModeratorUsername = calc.Moderator.Username
+	}
+	groups, _ := h.Repository.GetCalculationGroups(calc.ID)
+	calc.ResultCount = len(groups)
+	ctx.JSON(http.StatusOK, calc)
 }
 
+// FormCalculationAPI формирует заявку
+// @Summary      Сформировать заявку
+// @Description  Изменяет статус заявки с draft на formed (только для модераторов)
+// @Tags         calculations
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id path int true "ID заявки"
+// @Success      200 {object} SuccessResponse "Заявка сформирована"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      403 {object} ErrorResponse "Требуется роль модератора"
+// @Failure      404 {object} ErrorResponse "Заявка не найдена"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-calculations/{id}/form [put]
 func (h *Handler) FormCalculationAPI(ctx *gin.Context) {
 	if !middleware.IsModerator(ctx) {
 		ctx.JSON(http.StatusForbidden, gin.H{"message": "требуется роль модератора"})
@@ -302,7 +385,7 @@ func (h *Handler) FormCalculationAPI(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "операция выполнена успешно"})
 }
 
 func (h *Handler) CompleteCalculationAPI(ctx *gin.Context) {
@@ -331,7 +414,7 @@ func (h *Handler) CompleteCalculationAPI(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "операция выполнена успешно"})
 }
 
 func (h *Handler) RejectCalculationAPI(ctx *gin.Context) {
@@ -359,9 +442,22 @@ func (h *Handler) RejectCalculationAPI(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "операция выполнена успешно"})
 }
 
+// DeleteCalculationAPI удаляет заявку
+// @Summary      Удалить заявку
+// @Description  Удаляет заявку-черновик (доступно только создателю)
+// @Tags         calculations
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id path int true "ID заявки"
+// @Success      200 {object} SuccessResponse "Заявка удалена"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      401 {object} ErrorResponse "Требуется аутентификация"
+// @Failure      404 {object} ErrorResponse "Заявка не найдена"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-calculations/{id} [delete]
 func (h *Handler) DeleteCalculationAPI(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
@@ -384,7 +480,7 @@ func (h *Handler) DeleteCalculationAPI(ctx *gin.Context) {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"message": err.Error()})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "операция выполнена успешно"})
 }
 
 type mmAddReq struct {
@@ -411,6 +507,19 @@ type mmDeleteReq struct {
 	GroupID int `json:"group_id"`
 }
 
+// RemoveItemFromDraftAPI удаляет группу из черновика
+// @Summary      Удалить группу из черновика
+// @Description  Удаляет группу пациентов из заявки-черновика
+// @Tags         many-to-many
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body mmDeleteReq true "ID группы для удаления"
+// @Success      200 {object} map[string]int "ID заявки"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      401 {object} ErrorResponse "Требуется аутентификация"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-calculations/draft/groups [delete]
 func (h *Handler) RemoveItemFromDraftAPI(ctx *gin.Context) {
 	var req mmDeleteReq
 	if err := ctx.BindJSON(&req); err != nil || req.GroupID <= 0 {
@@ -432,6 +541,19 @@ type mmUpdateReq struct {
 	CAVIIndex *float64 `json:"cavi_index"`
 }
 
+// UpdateItemInDraftAPI обновляет CAVI индекс группы в черновике
+// @Summary      Обновить CAVI индекс в черновике
+// @Description  Изменяет значение CAVI индекса для группы в заявке-черновике
+// @Tags         many-to-many
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body mmUpdateReq true "ID группы и новый CAVI индекс"
+// @Success      200 {object} SuccessResponse "CAVI индекс обновлен"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      401 {object} ErrorResponse "Требуется аутентификация"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-calculations/draft/groups [put]
 func (h *Handler) UpdateItemInDraftAPI(ctx *gin.Context) {
 	var req mmUpdateReq
 	if err := ctx.BindJSON(&req); err != nil || req.GroupID <= 0 {
@@ -453,9 +575,20 @@ func (h *Handler) UpdateItemInDraftAPI(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"message": "no updatable fields"})
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "операция выполнена успешно"})
 }
 
+// GetGroupsAPI возвращает список групп пациентов
+// @Summary      Получить список групп
+// @Description  Возвращает список групп пациентов с возможностью фильтрации
+// @Tags         groups
+// @Produce      json
+// @Param        title query string false "Поиск по названию"
+// @Param        age_group query string false "Фильтр по возрастной группе"
+// @Param        disease_type query string false "Фильтр по типу заболевания"
+// @Success      200 {array} ds.CaviGroup "Список групп"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-groups [get]
 func (h *Handler) GetGroupsAPI(ctx *gin.Context) {
 	filters := repository.GroupFilters{
 		Title:    ctx.Query("title"),
@@ -474,9 +607,19 @@ func (h *Handler) GetGroupsAPI(ctx *gin.Context) {
 	for i := range groups {
 		groups[i].ImageURL = h.Storage.GetImageURLByID(groups[i].ID)
 	}
-	ctx.JSON(http.StatusOK, gin.H{"data": groups, "default_image": h.Storage.GetDefaultImageURL()})
+	ctx.JSON(http.StatusOK, groups)
 }
 
+// GetGroupAPI возвращает информацию об одной группе
+// @Summary      Получить группу по ID
+// @Description  Возвращает детальную информацию о группе пациентов
+// @Tags         groups
+// @Produce      json
+// @Param        id path int true "ID группы"
+// @Success      200 {object} ds.CaviGroup "Информация о группе"
+// @Failure      400 {object} ErrorResponse "Неверный ID"
+// @Failure      404 {object} ErrorResponse "Группа не найдена"
+// @Router       /api/cavi-groups/{id} [get]
 func (h *Handler) GetGroupAPI(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
@@ -489,7 +632,7 @@ func (h *Handler) GetGroupAPI(ctx *gin.Context) {
 		return
 	}
 	g.ImageURL = h.Storage.GetImageURLByID(g.ID)
-	ctx.JSON(http.StatusOK, gin.H{"data": g})
+	ctx.JSON(http.StatusOK, g)
 }
 
 type groupCreateReq struct {
@@ -497,9 +640,21 @@ type groupCreateReq struct {
 	Description string  `json:"description"`
 	AgeGroup    string  `json:"age_group"`
 	DiseaseType *string `json:"disease_type"`
-	BasePrice   float64 `json:"base_price"`
 }
 
+// CreateGroupAPI создает новую группу пациентов
+// @Summary      Создать группу
+// @Description  Создает новую группу пациентов (только для модераторов)
+// @Tags         groups
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        request body groupCreateReq true "Данные новой группы"
+// @Success      201 {object} ds.CaviGroup "Созданная группа"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      403 {object} ErrorResponse "Требуется роль модератора"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-groups [post]
 func (h *Handler) CreateGroupAPI(ctx *gin.Context) {
 	if !middleware.IsModerator(ctx) {
 		ctx.JSON(http.StatusForbidden, gin.H{"message": "требуется роль модератора"})
@@ -519,7 +674,6 @@ func (h *Handler) CreateGroupAPI(ctx *gin.Context) {
 		Description: req.Description,
 		AgeGroup:    req.AgeGroup,
 		DiseaseType: req.DiseaseType,
-		BasePrice:   req.BasePrice,
 		IsSelected:  false,
 		IsDeleted:   false,
 	}
@@ -528,18 +682,31 @@ func (h *Handler) CreateGroupAPI(ctx *gin.Context) {
 		return
 	}
 	g.ImageURL = h.Storage.GetImageURLByID(g.ID)
-	ctx.JSON(http.StatusCreated, gin.H{"data": g})
+	ctx.JSON(http.StatusCreated, g)
 }
 
 type groupUpdateReq struct {
-	Name        *string  `json:"name"`
-	Description *string  `json:"description"`
-	AgeGroup    *string  `json:"age_group"`
-	DiseaseType *string  `json:"disease_type"`
-	BasePrice   *float64 `json:"base_price"`
-	IsSelected  *bool    `json:"is_selected"`
+	Name        *string `json:"name"`
+	Description *string `json:"description"`
+	AgeGroup    *string `json:"age_group"`
+	DiseaseType *string `json:"disease_type"`
+	IsSelected  *bool   `json:"is_selected"`
 }
 
+// UpdateGroupAPI обновляет данные группы
+// @Summary      Обновить группу
+// @Description  Обновляет данные группы пациентов (только для модераторов)
+// @Tags         groups
+// @Security     BearerAuth
+// @Accept       json
+// @Produce      json
+// @Param        id path int true "ID группы"
+// @Param        request body groupUpdateReq true "Данные для обновления"
+// @Success      200 {object} ds.CaviGroup "Обновленная группа"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      403 {object} ErrorResponse "Требуется роль модератора"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-groups/{id} [put]
 func (h *Handler) UpdateGroupAPI(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
@@ -564,9 +731,6 @@ func (h *Handler) UpdateGroupAPI(ctx *gin.Context) {
 	if req.DiseaseType != nil {
 		updates["disease_type"] = *req.DiseaseType
 	}
-	if req.BasePrice != nil {
-		updates["base_price"] = *req.BasePrice
-	}
 	if req.IsSelected != nil {
 		updates["is_selected"] = *req.IsSelected
 	}
@@ -580,9 +744,21 @@ func (h *Handler) UpdateGroupAPI(ctx *gin.Context) {
 	}
 	g, _ := h.Repository.GetCaviGroup(id)
 	g.ImageURL = h.Storage.GetImageURLByID(g.ID)
-	ctx.JSON(http.StatusOK, gin.H{"data": g})
+	ctx.JSON(http.StatusOK, g)
 }
 
+// DeleteGroupAPI удаляет группу
+// @Summary      Удалить группу
+// @Description  Удаляет группу пациентов (soft-delete, только для модераторов)
+// @Tags         groups
+// @Security     BearerAuth
+// @Produce      json
+// @Param        id path int true "ID группы"
+// @Success      200 {object} SuccessResponse "Группа удалена"
+// @Failure      400 {object} ErrorResponse "Неверный ID"
+// @Failure      403 {object} ErrorResponse "Требуется роль модератора"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-groups/{id} [delete]
 func (h *Handler) DeleteGroupAPI(ctx *gin.Context) {
 	if !middleware.IsModerator(ctx) {
 		ctx.JSON(http.StatusForbidden, gin.H{"message": "требуется роль модератора"})
@@ -598,9 +774,23 @@ func (h *Handler) DeleteGroupAPI(ctx *gin.Context) {
 		return
 	}
 	_ = h.Storage.DeleteGroupImage(context.Background(), id)
-	ctx.JSON(http.StatusOK, gin.H{})
+	ctx.JSON(http.StatusOK, gin.H{"message": "операция выполнена успешно"})
 }
 
+// UploadGroupImageAPI загружает изображение для группы
+// @Summary      Загрузить изображение группы
+// @Description  Загружает или обновляет изображение группы (только для модераторов)
+// @Tags         groups
+// @Security     BearerAuth
+// @Accept       multipart/form-data
+// @Produce      json
+// @Param        id path int true "ID группы"
+// @Param        image formData file true "Файл изображения"
+// @Success      200 {object} ImageUploadResponse "URL изображения"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      403 {object} ErrorResponse "Требуется роль модератора"
+// @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
+// @Router       /api/cavi-groups/{id}/image [post]
 func (h *Handler) UploadGroupImageAPI(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
@@ -633,6 +823,15 @@ func (h *Handler) UploadGroupImageAPI(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"image_url": h.Storage.GetImageURLByID(id)})
 }
 
+// GetCartIconAPI возвращает информацию о корзине
+// @Summary      Получить иконку корзины
+// @Description  Возвращает ID черновика и количество групп в нем
+// @Tags         calculations
+// @Security     BearerAuth
+// @Produce      json
+// @Success      200 {object} CartIconResponse "Данные корзины"
+// @Failure      401 {object} ErrorResponse "Требуется аутентификация"
+// @Router       /api/cavi-calculations/draft [get]
 func (h *Handler) GetCartIconAPI(ctx *gin.Context) {
 	userLogin, _ := middleware.GetUsername(ctx)
 	calc, err := h.Repository.GetDraftCalculationByUserLogin(userLogin)

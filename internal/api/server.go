@@ -80,6 +80,7 @@ func StartServer() {
 			auth.POST("/login", h.Login)
 			auth.POST("/logout", authMiddleware.RequireAuth(), h.Logout)
 			auth.GET("/me", authMiddleware.RequireAuth(), h.GetCurrentUser)
+			auth.PUT("/me", authMiddleware.RequireAuth(), h.UpdateProfile)
 		}
 
 		// Группы CAVI (гость - только GET, пользователь - GET, модератор - все)
