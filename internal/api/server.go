@@ -21,7 +21,7 @@ import (
 
 func StartServer() {
 	log.Println("Starting server")
-	
+
 	_ = godotenv.Load()
 
 	cfg, err := config.NewConfig()
@@ -56,6 +56,10 @@ func StartServer() {
 	authMiddleware := middleware.NewAuthMiddleware(redis)
 
 	r := gin.Default()
+
+	// Добавляем CORS middleware
+	r.Use(middleware.CORSMiddleware())
+
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./resources")
 
@@ -63,7 +67,7 @@ func StartServer() {
 	r.GET("/", h.GetCaviGroups)
 	r.GET("/cavi-group/:id", h.GetCaviGroup)
 	r.GET("/calculations/:id", h.GetCaviCalculationByID)
-	
+
 	// HTML роуты требующие авторизации
 	r.POST("/add-group", h.AddGroupToCalculation)
 	r.POST("/calculations/:id/delete", h.SoftDeleteCalculationByID)
@@ -78,6 +82,7 @@ func StartServer() {
 		{
 			auth.POST("/register", h.Register)
 			auth.POST("/login", h.Login)
+			auth.POST("/refresh", h.RefreshToken)
 			auth.POST("/logout", authMiddleware.RequireAuth(), h.Logout)
 			auth.GET("/me", authMiddleware.RequireAuth(), h.GetCurrentUser)
 			auth.PUT("/me", authMiddleware.RequireAuth(), h.UpdateProfile)
@@ -89,13 +94,13 @@ func StartServer() {
 			// Публичные (гость)
 			groups.GET("", h.GetGroupsAPI)
 			groups.GET("/:id", h.GetGroupAPI)
-			
+
 			// Только для модератора
 			groups.POST("", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.CreateGroupAPI)
 			groups.PUT("/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UpdateGroupAPI)
 			groups.DELETE("/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.DeleteGroupAPI)
 			groups.POST("/:id/image", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UploadGroupImageAPI)
-			
+
 			// Для авторизованных пользователей
 			groups.POST("/:id/add-to-draft", authMiddleware.RequireAuth(), h.AddGroupToDraftFromGroupAPI)
 		}
@@ -110,10 +115,10 @@ func StartServer() {
 			calculations.PUT("/:id", authMiddleware.RequireAuth(), h.UpdateCalculationAPI)
 			calculations.PUT("/:id/form", authMiddleware.RequireAuth(), h.FormCalculationAPI)
 			calculations.DELETE("/:id", authMiddleware.RequireAuth(), h.DeleteCalculationAPI)
-			
+
 			// Только для модератора
 			calculations.PUT("/:id/moderate", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.ModerateCalculationAPI)
-			
+
 			// Работа с черновиком
 			calculations.DELETE("/draft/groups", authMiddleware.RequireAuth(), h.RemoveItemFromDraftAPI)
 			calculations.PUT("/draft/groups", authMiddleware.RequireAuth(), h.UpdateItemInDraftAPI)

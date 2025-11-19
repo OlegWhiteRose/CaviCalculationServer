@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"rip/internal/app/auth"
 	"rip/internal/app/ds"
@@ -29,12 +30,22 @@ type LoginRequest struct {
 
 // LoginResponse структура успешного ответа при логине
 type LoginResponse struct {
-	Message string `json:"message" example:"аутентификация успешна"`
-	Token   string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
-	User    struct {
+	Message      string `json:"message" example:"аутентификация успешна"`
+	Token        string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
+	User         struct {
 		Username    string `json:"username" example:"user1"`
 		IsModerator bool   `json:"is_moderator" example:"false"`
 	} `json:"user"`
+}
+
+type refreshRequest struct {
+	RefreshToken string `json:"refresh_token" binding:"required"`
+}
+
+type refreshResponse struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
 }
 
 // RegisterResponse структура успешного ответа при регистрации
@@ -166,20 +177,24 @@ func (h *Handler) Login(ctx *gin.Context) {
 		return
 	}
 
-	// Сохраняем сессию в Redis (24 часа)
-	sessionKey := "session:" + user.Username
+	refreshToken, err := auth.GenerateRefreshToken(user.ID, user.Username)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при создании refresh токена"})
+		return
+	}
+
+	refreshKey := fmt.Sprintf("refresh:%d", user.ID)
 	c, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-
-	sessionData := user.Username
-	if err := h.Redis.Set(c, sessionKey, sessionData, 24*time.Hour); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при создании сессии"})
+	if err := h.Redis.Set(c, refreshKey, refreshToken, auth.RefreshTokenTTL()); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при сохранении refresh токена"})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"message": "аутентификация успешна",
-		"token": token,
+		"message":       "аутентификация успешна",
+		"token":         token,
+		"refresh_token": refreshToken,
 		"user": gin.H{
 			"username":     user.Username,
 			"is_moderator": user.IsModerator,
@@ -204,18 +219,86 @@ func (h *Handler) Logout(ctx *gin.Context) {
 		return
 	}
 
-	// Удаляем сессию из Redis
-	sessionKey := "session:" + username
+	var user ds.User
+	if err := h.Repository.DB().Where("username = ?", username).First(&user).Error; err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "пользователь не найден"})
+		return
+	}
+
+	refreshKey := fmt.Sprintf("refresh:%d", user.ID)
 	c, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	if err := h.Redis.Delete(c, sessionKey); err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при удалении сессии"})
+	if err := h.Redis.Delete(c, refreshKey); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при удалении refresh токена"})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "успешный выход из системы",
+	})
+}
+
+// RefreshToken обновляет access токен по refresh токену
+// @Summary      Обновить access токен
+// @Description  Создает новую пару access/refresh токенов, если refresh токен валиден
+// @Tags         auth
+// @Accept       json
+// @Produce      json
+// @Param        request body refreshRequest true "Refresh токен"
+// @Success      200 {object} refreshResponse "Новая пара токенов"
+// @Failure      400 {object} ErrorResponse "Неверные данные"
+// @Failure      401 {object} ErrorResponse "Refresh токен недействителен"
+// @Router       /api/auth/refresh [post]
+func (h *Handler) RefreshToken(ctx *gin.Context) {
+	var req refreshRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil || req.RefreshToken == "" {
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "refresh_token обязателен"})
+		return
+	}
+
+	claims, err := auth.ValidateRefreshToken(req.RefreshToken)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "refresh-token недействителен"})
+		return
+	}
+
+	c, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	refreshKey := fmt.Sprintf("refresh:%d", claims.UserID)
+	storedToken, err := h.Redis.Get(c, refreshKey)
+	if err != nil || storedToken != req.RefreshToken {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "refresh-token не найден"})
+		return
+	}
+
+	var user ds.User
+	if err := h.Repository.DB().Where("id = ?", claims.UserID).First(&user).Error; err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "пользователь не найден"})
+		return
+	}
+
+	accessToken, err := auth.GenerateToken(user.Username, user.IsModerator)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "не удалось создать access токен"})
+		return
+	}
+
+	newRefreshToken, err := auth.GenerateRefreshToken(user.ID, user.Username)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "не удалось создать refresh токен"})
+		return
+	}
+
+	if err := h.Redis.Set(c, refreshKey, newRefreshToken, auth.RefreshTokenTTL()); err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "ошибка при обновлении refresh токена"})
+		return
+	}
+
+	ctx.JSON(http.StatusOK, gin.H{
+		"access_token":  accessToken,
+		"refresh_token": newRefreshToken,
 	})
 }
 

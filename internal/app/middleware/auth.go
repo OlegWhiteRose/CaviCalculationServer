@@ -1,12 +1,10 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"rip/internal/app/auth"
 	redisClient "rip/internal/app/redis"
 	"strings"
-	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -32,18 +30,6 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		claims, err := auth.ValidateToken(tokenString)
 		if err != nil {
 			c.JSON(http.StatusUnauthorized, gin.H{"message": "невалидный токен"})
-			c.Abort()
-			return
-		}
-
-		// Проверяем наличие сессии в Redis
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
-
-		sessionKey := "session:" + claims.Username
-		exists, err := m.Redis.Exists(ctx, sessionKey)
-		if err != nil || !exists {
-			c.JSON(http.StatusUnauthorized, gin.H{"message": "сессия не найдена или истекла"})
 			c.Abort()
 			return
 		}
