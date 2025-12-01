@@ -17,7 +17,6 @@ func NewAuthMiddleware(redis *redisClient.Client) *AuthMiddleware {
 	return &AuthMiddleware{Redis: redis}
 }
 
-// RequireAuth проверяет JWT токен и устанавливает данные пользователя в контекст
 func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := extractToken(c)
@@ -34,14 +33,12 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 			return
 		}
 
-		// Устанавливаем данные пользователя в контекст
 		c.Set("username", claims.Username)
 		c.Set("is_moderator", claims.IsModerator)
 		c.Next()
 	}
 }
 
-// RequireModerator проверяет, что пользователь является модератором
 func (m *AuthMiddleware) RequireModerator() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		isModerator, exists := c.Get("is_moderator")
@@ -54,7 +51,6 @@ func (m *AuthMiddleware) RequireModerator() gin.HandlerFunc {
 	}
 }
 
-// OptionalAuth пытается извлечь пользователя, но не требует аутентификации
 func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		tokenString := extractToken(c)
@@ -69,7 +65,6 @@ func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
 	}
 }
 
-// extractToken извлекает JWT токен из заголовка Authorization
 func extractToken(c *gin.Context) string {
 	bearerToken := c.GetHeader("Authorization")
 	if len(strings.Split(bearerToken, " ")) == 2 {
@@ -78,7 +73,6 @@ func extractToken(c *gin.Context) string {
 	return ""
 }
 
-// GetUsername возвращает username из контекста
 func GetUsername(c *gin.Context) (string, bool) {
 	username, exists := c.Get("username")
 	if !exists {
@@ -87,7 +81,6 @@ func GetUsername(c *gin.Context) (string, bool) {
 	return username.(string), true
 }
 
-// IsModerator проверяет, является ли пользователь модератором
 func IsModerator(c *gin.Context) bool {
 	isMod, exists := c.Get("is_moderator")
 	if !exists {

@@ -42,42 +42,34 @@ func StartServer() {
 		logrus.Error("MinIO storage initialization error:", err)
 	}
 
-	// Инициализация Redis
 	redis, err := redisClient.NewRedisClient()
 	if err != nil {
 		logrus.Fatal("Failed to initialize Redis:", err)
 	}
 	log.Println("Redis connected successfully")
 
-	// Инициализация handler с Redis
 	h := handler.NewHandler(cfg, repo, minioStorage, redis)
 
-	// Инициализация auth middleware
 	authMiddleware := middleware.NewAuthMiddleware(redis)
 
 	r := gin.Default()
 
-	// Добавляем CORS middleware
 	r.Use(middleware.CORSMiddleware())
 
 	r.LoadHTMLGlob("templates/*")
 	r.Static("/static", "./resources")
 
-	// HTML роуты (без авторизации для просмотра)
 	r.GET("/", h.GetCaviGroups)
 	r.GET("/cavi-group/:id", h.GetCaviGroup)
 	r.GET("/calculations/:id", h.GetCaviCalculationByID)
 
-	// HTML роуты требующие авторизации
 	r.POST("/add-group", h.AddGroupToCalculation)
 	r.POST("/calculations/:id/delete", h.SoftDeleteCalculationByID)
 
-	// Swagger UI
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api")
 	{
-		// Аутентификация (публичные роуты)
 		auth := api.Group("/auth")
 		{
 			auth.POST("/register", h.Register)
@@ -88,27 +80,21 @@ func StartServer() {
 			auth.PUT("/me", authMiddleware.RequireAuth(), h.UpdateProfile)
 		}
 
-		// Группы CAVI (гость - только GET, пользователь - GET, модератор - все)
 		groups := api.Group("/cavi-groups")
 		{
-			// Публичные (гость)
 			groups.GET("", h.GetGroupsAPI)
 			groups.GET("/:id", h.GetGroupAPI)
 
-			// Только для модератора
 			groups.POST("", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.CreateGroupAPI)
 			groups.PUT("/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UpdateGroupAPI)
 			groups.DELETE("/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.DeleteGroupAPI)
 			groups.POST("/:id/image", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UploadGroupImageAPI)
 
-			// Для авторизованных пользователей
 			groups.POST("/:id/add-to-draft", authMiddleware.RequireAuth(), h.AddGroupToDraftFromGroupAPI)
 		}
 
-		// Заявки CAVI
 		calculations := api.Group("/cavi-calculations")
 		{
-			// Для авторизованных пользователей
 			calculations.GET("/draft", authMiddleware.RequireAuth(), h.GetCartIconAPI)
 			calculations.GET("", authMiddleware.RequireAuth(), h.ListCalculationsAPI)
 			calculations.GET("/:id", authMiddleware.RequireAuth(), h.GetCalculationAPI)
@@ -116,10 +102,8 @@ func StartServer() {
 			calculations.PUT("/:id/form", authMiddleware.RequireAuth(), h.FormCalculationAPI)
 			calculations.DELETE("/:id", authMiddleware.RequireAuth(), h.DeleteCalculationAPI)
 
-			// Только для модератора
 			calculations.PUT("/:id/moderate", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.ModerateCalculationAPI)
 
-			// Работа с черновиком
 			calculations.DELETE("/draft/groups", authMiddleware.RequireAuth(), h.RemoveItemFromDraftAPI)
 			calculations.PUT("/draft/groups", authMiddleware.RequireAuth(), h.UpdateItemInDraftAPI)
 		}

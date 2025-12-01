@@ -21,7 +21,6 @@ type Claims struct {
 	jwt.RegisteredClaims
 }
 
-// GenerateToken создает JWT токен для пользователя
 func GenerateToken(username string, isModerator bool) (string, error) {
 	expirationTime := time.Now().Add(accessTokenTTL)
 
@@ -43,7 +42,6 @@ func GenerateToken(username string, isModerator bool) (string, error) {
 	return tokenString, nil
 }
 
-// ValidateToken проверяет JWT токен и возвращает claims
 func ValidateToken(tokenString string) (*Claims, error) {
 	claims := &Claims{}
 
