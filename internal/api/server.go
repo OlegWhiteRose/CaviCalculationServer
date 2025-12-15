@@ -64,7 +64,7 @@ func StartServer() {
 		api.GET("/cavi-calculations", handler.ListCalculationsAPI)
 		api.GET("/cavi-calculations/:id", handler.GetCalculationAPI)
 		api.PUT("/cavi-calculations/:id", handler.UpdateCalculationAPI)
-		api.PUT("/cavi-calculations/:id/form", handler.FormCalculationAPI)
+		api.PUT("/cavi-calculations/draft/form", handler.FormCalculationAPI)
 		api.PUT("/cavi-calculations/:id/moderate", handler.ModerateCalculationAPI)
 		api.DELETE("/cavi-calculations/:id", handler.DeleteCalculationAPI)
 
@@ -75,6 +75,7 @@ func StartServer() {
 		api.POST("/users/login", handler.UsersLoginAPI)
 		api.POST("/users/logout", handler.UsersLogoutAPI)
 		api.GET("/users/me", handler.UsersMeAPI)
+		api.PUT("/users/me", handler.UsersUpdateMeAPI)
 	}
 
 	serverAddr := fmt.Sprintf("%s:%d", cfg.CaviServerHost, cfg.CaviServerPort)

@@ -3,29 +3,24 @@ package userstate
 import "sync"
 
 type User struct {
-	ID           int    `json:"id"`
-	Username     string `json:"username"`
-	Password     string `json:"-"`
-	IsModerator  bool   `json:"is_moderator"`
+	Username    string `json:"username"`
+	Password    string `json:"-"`
+	IsModerator bool   `json:"is_moderator"`
 }
 
 type store struct {
 	mu       sync.Mutex
 	users    map[string]*User
-	nextID   int
 	loggedIn *User
 }
 
-var s = &store{users: make(map[string]*User), nextID: 1}
+var s = &store{users: make(map[string]*User)}
 
 func init() {
-    s.users["admin"] = &User{ID: s.nextID, Username: "admin", Password: "demo123", IsModerator: true}
-    s.nextID++
-    s.users["moderator"] = &User{ID: s.nextID, Username: "moderator", Password: "demo123", IsModerator: true}
-    s.nextID++
-    s.users["user1"] = &User{ID: s.nextID, Username: "user1", Password: "demo123", IsModerator: false}
-    s.nextID++
-    s.loggedIn = nil
+	s.users["admin"] = &User{Username: "admin", Password: "demo123", IsModerator: true}
+	s.users["moderator"] = &User{Username: "moderator", Password: "demo123", IsModerator: true}
+	s.users["user1"] = &User{Username: "user1", Password: "demo123", IsModerator: false}
+	s.loggedIn = nil
 }
 
 func Register(username, password string) (*User, bool) {
@@ -35,8 +30,7 @@ func Register(username, password string) (*User, bool) {
 		return nil, false
 	}
 	isMod := username == "moderator" || username == "admin"
-	u := &User{ID: s.nextID, Username: username, Password: password, IsModerator: isMod}
-	s.nextID++
+	u := &User{Username: username, Password: password, IsModerator: isMod}
 	s.users[username] = u
 	return u, true
 }
@@ -64,5 +58,26 @@ func Me() (*User, bool) {
 	if s.loggedIn == nil {
 		return nil, false
 	}
-	return &User{ID: s.loggedIn.ID, Username: s.loggedIn.Username, IsModerator: s.loggedIn.IsModerator}, true
+	return &User{Username: s.loggedIn.Username, IsModerator: s.loggedIn.IsModerator}, true
+}
+
+func UpdateMe(newUsername, newPassword *string) (*User, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.loggedIn == nil {
+		return nil, false
+	}
+	oldUsername := s.loggedIn.Username
+	if newUsername != nil && *newUsername != "" && *newUsername != oldUsername {
+		if _, exists := s.users[*newUsername]; exists {
+			return nil, false
+		}
+		delete(s.users, oldUsername)
+		s.loggedIn.Username = *newUsername
+		s.users[*newUsername] = s.loggedIn
+	}
+	if newPassword != nil && *newPassword != "" {
+		s.loggedIn.Password = *newPassword
+	}
+	return &User{Username: s.loggedIn.Username, IsModerator: s.loggedIn.IsModerator}, true
 }

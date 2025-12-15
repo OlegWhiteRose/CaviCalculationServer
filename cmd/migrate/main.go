@@ -16,9 +16,9 @@ func main() {
 	}
 
 	err = db.AutoMigrate(
-		&ds.CaviService{},
-		&ds.CaviApplication{},
-		&ds.CaviApplicationService{},
+		&ds.CaviGroup{},
+		&ds.CaviCalculation{},
+		&ds.CaviCalculationGroup{},
 		&ds.User{},
 	)
 	if err != nil {
