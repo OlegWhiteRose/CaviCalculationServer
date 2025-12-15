@@ -10,22 +10,20 @@ import (
 
 // @title           CAVI Calculator API
 // @version         1.0
-// @description     API для управления заявками и группами CAVI с поддержкой аутентификации и авторизации
-// @termsOfService  http://swagger.io/terms/
+// @description     API для расчёта индекса CAVI (Cardio-Ankle Vascular Index).
+// @description     Система позволяет управлять группами пациентов, создавать заявки на расчёт,
+// @description     добавлять группы в заявки и проводить модерацию.
 
 // @contact.name   API Support
-// @contact.email  support@cavi.com
+// @contact.email  support@cavi.local
 
-// @license.name  Apache 2.0
-// @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
-
-// @host      localhost:8000
-// @BasePath  /
+// @host      localhost:8080
+// @BasePath  /api
 
 // @securityDefinitions.apikey BearerAuth
 // @in header
 // @name Authorization
-// @description Введите токен в формате: Bearer {token}
+// @description JWT токен в формате: Bearer {token}
 
 func main() {
 	if err := godotenv.Load(); err != nil {

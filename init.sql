@@ -1,8 +1,7 @@
 \c cavi_db;
 
 CREATE TABLE IF NOT EXISTS auth_user (
-    id SERIAL PRIMARY KEY,
-    username VARCHAR(150) UNIQUE NOT NULL,
+    username VARCHAR(150) PRIMARY KEY,
     password VARCHAR(128) NOT NULL,
     is_moderator BOOLEAN NOT NULL DEFAULT FALSE
 );
@@ -15,28 +14,28 @@ CREATE TABLE IF NOT EXISTS cavi_groups (
     is_deleted BOOLEAN NOT NULL DEFAULT FALSE,
     image_url VARCHAR(500),
     age_group VARCHAR(100) NOT NULL,
-    disease_type VARCHAR(100),
-    base_price DECIMAL(10,3) NOT NULL DEFAULT 0.000
+    disease_type VARCHAR(100)
 );
 
 CREATE TABLE IF NOT EXISTS cavi_calculations (
     id SERIAL PRIMARY KEY,
     status VARCHAR(50) NOT NULL DEFAULT 'draft',
-    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    created_at VARCHAR(50) NOT NULL DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI:SS'),
     creator_login VARCHAR(150) NOT NULL REFERENCES auth_user(username),
-    formed_at TIMESTAMP WITH TIME ZONE,
-    completed_at TIMESTAMP WITH TIME ZONE,
+    formed_at VARCHAR(50),
+    completed_at VARCHAR(50),
     moderator_login VARCHAR(150) REFERENCES auth_user(username),
     systolic_pressure INTEGER,
     diastolic_pressure INTEGER,
-    pulse_wave_velocity DECIMAL(5,2)
+    pulse_wave_velocity DECIMAL(5,2),
+    groups_count INTEGER
 );
 
 CREATE TABLE IF NOT EXISTS cavi_calculation_groups (
     id SERIAL PRIMARY KEY,
     calculation_id INTEGER NOT NULL REFERENCES cavi_calculations(id),
     group_id INTEGER NOT NULL REFERENCES cavi_groups(id),
-    cavi_index DECIMAL(10,3) NOT NULL DEFAULT 0.000,
+    cavi_index DECIMAL(10,3),
     UNIQUE(calculation_id, group_id)
 );
 
@@ -51,20 +50,19 @@ CREATE INDEX IF NOT EXISTS idx_cavi_calculations_creator ON cavi_calculations(cr
 CREATE INDEX IF NOT EXISTS idx_cavi_calculation_groups_calc ON cavi_calculation_groups(calculation_id);
 CREATE INDEX IF NOT EXISTS idx_cavi_calculation_groups_group ON cavi_calculation_groups(group_id);
 
--- Пароль для всех: "password" (bcrypt hash)
+-- Пароль для всех: password123 (bcrypt hash)
 INSERT INTO auth_user (username, password, is_moderator) VALUES
-('admin', '$2a$10$6oER9B4AS/blFurhubTwROQDItENaRT/Pf7l27Pkqj3p4TMNhjWP6', TRUE),
-('moderator', '$2a$10$6oER9B4AS/blFurhubTwROQDItENaRT/Pf7l27Pkqj3p4TMNhjWP6', TRUE),
-('user1', '$2a$10$6oER9B4AS/blFurhubTwROQDItENaRT/Pf7l27Pkqj3p4TMNhjWP6', FALSE)
-ON CONFLICT (username) DO UPDATE SET password = EXCLUDED.password, is_moderator = EXCLUDED.is_moderator;
+('admin', '$2a$10$2KZNfmkiQ8i2K27m47O7nehtFLNaJDu6hLuq6tXXiiuUWszBcWzR.', TRUE),
+('moderator', '$2a$10$2KZNfmkiQ8i2K27m47O7nehtFLNaJDu6hLuq6tXXiiuUWszBcWzR.', TRUE),
+('user1', '$2a$10$2KZNfmkiQ8i2K27m47O7nehtFLNaJDu6hLuq6tXXiiuUWszBcWzR.', FALSE);
 
-INSERT INTO cavi_groups (name, description, age_group, disease_type, base_price, image_url) VALUES
-('Молодые пациенты (до 35 лет)', 'Эластичные сосуды с низким уровнем жесткости', 'young', NULL, 0.000, ''),
-('Средний возраст (36–50 лет)', 'Часто появляются первые факторы риска', 'middle', NULL, 0.000, ''),
-('Пожилые пациенты (51–70 лет)', 'Повышенная жесткость артерий', 'elderly', NULL, 0.000, ''),
-('Молодые пациенты с сахарным диабетом', 'Ранние признаки повреждения сосудов', 'young', 'diabetes', 0.000, ''),
-('Средний возраст с сахарным диабетом', 'Ускоренное старение артерий', 'middle', 'diabetes', 0.000, ''),
-('Пожилые пациенты с сахарным диабетом', 'Высокий риск сердечно-сосудистых осложнений', 'elderly', 'diabetes', 0.000, ''),
-('Молодые пациенты с гипертонией', 'Начальная стадия артериальной жесткости', 'young', 'hypertension', 0.000, ''),
-('Средний возраст с гипертонией', 'Факторы риска при гипертонии в среднем возрасте', 'middle', 'hypertension', 0.000, ''),
-('Пожилые пациенты с гипертонией', 'Повышенная жесткость при гипертонии в пожилом возрасте', 'elderly', 'hypertension', 0.000, '');
+INSERT INTO cavi_groups (name, description, age_group, disease_type, image_url) VALUES
+('Молодые пациенты (до 35 лет)', 'Эластичные сосуды с низким уровнем жесткости', 'young', NULL, ''),
+('Средний возраст (36–50 лет)', 'Часто появляются первые факторы риска', 'middle', NULL, ''),
+('Пожилые пациенты (51–70 лет)', 'Повышенная жесткость артерий', 'elderly', NULL, ''),
+('Молодые пациенты с сахарным диабетом', 'Ранние признаки повреждения сосудов', 'young', 'diabetes', ''),
+('Средний возраст с сахарным диабетом', 'Ускоренное старение артерий', 'middle', 'diabetes', ''),
+('Пожилые пациенты с сахарным диабетом', 'Высокий риск сердечно-сосудистых осложнений', 'elderly', 'diabetes', ''),
+('Молодые пациенты с гипертонией', 'Начальная стадия артериальной жесткости', 'young', 'hypertension', ''),
+('Средний возраст с гипертонией', 'Факторы риска при гипертонии в среднем возрасте', 'middle', 'hypertension', ''),
+('Пожилые пациенты с гипертонией', 'Повышенная жесткость при гипертонии в пожилом возрасте', 'elderly', 'hypertension', '');

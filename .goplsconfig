@@ -1,6 +1,0 @@
-{
-  "build.buildFlags": [],
-  "build.env": {
-    "CGO_ENABLED": "1"
-  }
-}

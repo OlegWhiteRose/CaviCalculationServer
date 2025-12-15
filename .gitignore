@@ -1,9 +1,25 @@
-.vscode
+# IDE
+.vscode/
+.idea/
+
+# Environment
 .env
+
+# Logs
 app.log
 *.log
+
+# Temp
 /tmp/
+*.tmp
+
+# OS
 .DS_Store
 *.swp
 *.swo
 *~
+
+# Go binaries
+rip
+*.exe
+/bin/

@@ -17,4 +17,3 @@ func FromEnv() string {
 
 	return fmt.Sprintf("host=%s port=%s user=%s password=%s dbname=%s sslmode=disable", host, port, user, pass, dbname)
 }
-

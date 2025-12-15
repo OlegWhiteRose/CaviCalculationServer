@@ -2,19 +2,17 @@ package ds
 
 import (
 	"math"
-	"time"
 )
 
 type CaviGroup struct {
-	ID          int       `gorm:"primaryKey"`
-	Name        string    `gorm:"type:varchar(255);not null"`
-	Description string    `gorm:"type:text"`
-	IsSelected  bool      `gorm:"type:boolean not null;default:false"`
-	IsDeleted   bool      `gorm:"type:boolean not null;default:false"`
-	ImageURL    string    `gorm:"type:varchar(500)"`
-	AgeGroup    string    `gorm:"type:varchar(100);not null"`
-	DiseaseType *string   `gorm:"type:varchar(100)"`
-	BasePrice   float64   `gorm:"type:decimal(10,3);not null;default:0.000"`
+	ID          int     `gorm:"primaryKey"`
+	Name        string  `gorm:"type:varchar(255);not null"`
+	Description string  `gorm:"type:text"`
+	IsSelected  bool    `gorm:"type:boolean not null;default:false"`
+	IsDeleted   bool    `gorm:"type:boolean not null;default:false"`
+	ImageURL    string  `gorm:"type:varchar(500)"`
+	AgeGroup    string  `gorm:"type:varchar(100);not null"`
+	DiseaseType *string `gorm:"type:varchar(100)"`
 }
 
 func (CaviGroup) TableName() string {
@@ -22,24 +20,21 @@ func (CaviGroup) TableName() string {
 }
 
 type CaviCalculation struct {
-	ID                  int        `gorm:"primaryKey"`
-	Status              string     `gorm:"type:varchar(50);not null;default:'draft'"`
-	CreatedAt           time.Time  `gorm:"not null"`
-	FormedAt            *time.Time
-	CompletedAt         *time.Time
-	ModeratorLogin      *string    `gorm:"type:varchar(150)"`
-	SystolicPressure    *int
-	DiastolicPressure   *int
-	PulseWaveVelocity   *float64
-	CreatorLogin        string     `gorm:"type:varchar(150);not null"`
-	
-	Creator             *User                    `gorm:"foreignKey:CreatorLogin;references:Username"`
-	Moderator           *User                    `gorm:"foreignKey:ModeratorLogin;references:Username"`
+	ID                int     `gorm:"primaryKey"`
+	Status            string  `gorm:"type:varchar(50);not null;default:'draft'"`
+	CreatedAt         string  `gorm:"type:varchar(50);not null"`
+	FormedAt          *string `gorm:"type:varchar(50)"`
+	CompletedAt       *string `gorm:"type:varchar(50)"`
+	SystolicPressure  *int
+	DiastolicPressure *int
+	PulseWaveVelocity *float64
+	GroupsCount       *int    `gorm:"column:groups_count"`
+	CreatorLogin      string  `gorm:"type:varchar(150);not null" json:"Creator"`
+	ModeratorLogin    *string `gorm:"type:varchar(150)" json:"Moderator"`
+
+	Creator           *User                  `gorm:"foreignKey:CreatorLogin;references:Username" json:"-"`
+	Moderator         *User                  `gorm:"foreignKey:ModeratorLogin;references:Username" json:"-"`
 	CalculationGroups []CaviCalculationGroup `gorm:"foreignKey:CalculationID"`
-	
-	CreatorUsername    string `gorm:"-"`
-	ModeratorUsername  string `gorm:"-"`
-	ResultCount        int    `gorm:"-"`
 }
 
 func (CaviCalculation) TableName() string {
@@ -47,12 +42,12 @@ func (CaviCalculation) TableName() string {
 }
 
 type CaviCalculationGroup struct {
-	ID             int       `gorm:"primaryKey"`
-	CalculationID  int       `gorm:"not null;uniqueIndex:idx_calculation_group"`
-	GroupID        int       `gorm:"not null;uniqueIndex:idx_calculation_group"`
-	CAVIIndex      float64   `gorm:"column:cavi_index;type:decimal(10,3);not null;default:0.000"`
-	CalculatedCAVI float64   `gorm:"-"`
-	
+	ID             int      `gorm:"primaryKey"`
+	CalculationID  int      `gorm:"not null;uniqueIndex:idx_calculation_group"`
+	GroupID        int      `gorm:"not null;uniqueIndex:idx_calculation_group"`
+	CAVIIndex      *float64 `gorm:"column:cavi_index;type:decimal(10,3)"`
+	CalculatedCAVI float64  `gorm:"-" json:"-"`
+
 	Group *CaviGroup `gorm:"foreignKey:GroupID"`
 }
 
@@ -60,11 +55,11 @@ func (CaviCalculationGroup) TableName() string {
 	return "cavi_calculation_groups"
 }
 
+// User - без ID, только username как primary key
 type User struct {
-	ID       int    `gorm:"primaryKey"`
-	Username string `gorm:"type:varchar(150);unique;not null"`
-	Password string `gorm:"type:varchar(128);not null"`
-	IsModerator  bool   `gorm:"type:boolean;not null;default:false"`
+	Username    string `gorm:"primaryKey;type:varchar(150)" json:"username"`
+	Password    string `gorm:"type:varchar(128);not null" json:"-"`
+	IsModerator bool   `gorm:"type:boolean;not null;default:false" json:"is_moderator"`
 }
 
 func (User) TableName() string { return "auth_user" }
@@ -95,7 +90,7 @@ func CalculateCAVI(group *CaviGroup, systolic, diastolic int, pwv float64) float
 
 	ps := float64(systolic)
 	pd := float64(diastolic)
-	
+
 	if ps <= pd {
 		return 0.0
 	}
@@ -128,4 +123,3 @@ func CalculateCAVI(group *CaviGroup, systolic, diastolic int, pwv float64) float
 
 	return cavi
 }
-

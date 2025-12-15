@@ -1,272 +1,39 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API для управления заявками и группами CAVI с поддержкой аутентификации и авторизации",
+        "description": "API для расчёта индекса CAVI (Cardio-Ankle Vascular Index).\nСистема позволяет управлять группами пациентов, создавать заявки на расчёт,\nдобавлять группы в заявки и проводить модерацию.",
         "title": "CAVI Calculator API",
-        "termsOfService": "http://swagger.io/terms/",
         "contact": {
             "name": "API Support",
-            "email": "support@cavi.com"
-        },
-        "license": {
-            "name": "Apache 2.0",
-            "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+            "email": "support@cavi.local"
         },
         "version": "1.0"
     },
-    "host": "localhost:8000",
-    "basePath": "/",
+    "host": "localhost:8080",
+    "basePath": "/api",
     "paths": {
-        "/api/auth/login": {
-            "post": {
-                "description": "Аутентифицирует пользователя и возвращает JWT токен",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Вход в систему",
-                "parameters": [
-                    {
-                        "description": "Данные для входа",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.LoginRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Успешный вход",
-                        "schema": {
-                            "$ref": "#/definitions/handler.LoginResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Неверные данные",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Неверные учетные данные",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/auth/logout": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Удаляет сессию пользователя из Redis",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Выход из системы",
-                "responses": {
-                    "200": {
-                        "description": "Успешный выход",
-                        "schema": {
-                            "$ref": "#/definitions/handler.SuccessResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Ошибка при удалении сессии",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/auth/me": {
+        "/cavi-calculations": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает информацию о текущем авторизованном пользователе",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Получить текущего пользователя",
-                "responses": {
-                    "200": {
-                        "description": "Информация о пользователе",
-                        "schema": {
-                            "$ref": "#/definitions/handler.UserInfoResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Пользователь не найден",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Обновляет username и/или пароль текущего пользователя",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Обновить профиль",
-                "parameters": [
-                    {
-                        "description": "Данные для обновления",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpdateProfileRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Профиль успешно обновлен",
-                        "schema": {
-                            "$ref": "#/definitions/handler.UpdateProfileResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Неверные данные",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Имя пользователя уже занято",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/auth/register": {
-            "post": {
-                "description": "Создает нового пользователя в системе",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Регистрация нового пользователя",
-                "parameters": [
-                    {
-                        "description": "Данные для регистрации",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.RegisterRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "201": {
-                        "description": "Успешная регистрация",
-                        "schema": {
-                            "$ref": "#/definitions/handler.RegisterResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Неверные данные",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "409": {
-                        "description": "Пользователь уже существует",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/cavi-calculations": {
-            "get": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Возвращает список заявок. Обычные пользователи видят только свои заявки, модераторы - все",
+                "description": "Возвращает список заявок (кроме удалённых и черновиков) с фильтрацией по статусу и диапазону дат формирования.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "calculations"
                 ],
-                "summary": "Получить список заявок",
+                "summary": "Список заявок",
                 "parameters": [
                     {
+                        "enum": [
+                            "formed",
+                            "completed",
+                            "rejected"
+                        ],
                         "type": "string",
                         "description": "Фильтр по статусу",
                         "name": "status",
@@ -274,13 +41,15 @@
                     },
                     {
                         "type": "string",
-                        "description": "Дата от (YYYY-MM-DD)",
+                        "example": "\"2025-01-01\"",
+                        "description": "Дата формирования от (YYYY-MM-DD)",
                         "name": "date_from",
                         "in": "query"
                     },
                     {
                         "type": "string",
-                        "description": "Дата до (YYYY-MM-DD)",
+                        "example": "\"2025-12-31\"",
+                        "description": "Дата формирования до (YYYY-MM-DD)",
                         "name": "date_to",
                         "in": "query"
                     }
@@ -289,7 +58,10 @@
                     "200": {
                         "description": "Список заявок",
                         "schema": {
-                            "$ref": "#/definitions/handler.CalculationsListResponse"
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/handler.CalculationResponse"
+                            }
                         }
                     },
                     "401": {
@@ -307,24 +79,24 @@
                 }
             }
         },
-        "/api/cavi-calculations/draft": {
+        "/cavi-calculations/draft": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает ID черновика и количество групп в нем",
+                "description": "Возвращает ID черновика заявки текущего пользователя и количество групп в нём.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "calculations"
                 ],
-                "summary": "Получить иконку корзины",
+                "summary": "Корзина (черновик)",
                 "responses": {
                     "200": {
-                        "description": "Данные корзины",
+                        "description": "Информация о корзине",
                         "schema": {
                             "$ref": "#/definitions/handler.CartIconResponse"
                         }
@@ -338,44 +110,30 @@
                 }
             }
         },
-        "/api/cavi-calculations/draft/groups": {
+        "/cavi-calculations/draft/form": {
             "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Изменяет значение CAVI индекса для группы в заявке-черновике",
-                "consumes": [
-                    "application/json"
-                ],
+                "description": "Переводит черновик в статус \"сформирована\". Проверяет наличие групп в заявке. Устанавливает дату формирования.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
-                    "many-to-many"
+                    "calculations"
                 ],
-                "summary": "Обновить CAVI индекс в черновике",
-                "parameters": [
-                    {
-                        "description": "ID группы и новый CAVI индекс",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.mmUpdateReq"
-                        }
-                    }
-                ],
+                "summary": "Сформировать заявку",
                 "responses": {
                     "200": {
-                        "description": "CAVI индекс обновлен",
+                        "description": "Заявка сформирована",
                         "schema": {
-                            "$ref": "#/definitions/handler.SuccessResponse"
+                            "$ref": "#/definitions/handler.CalculationResponse"
                         }
                     },
                     "400": {
-                        "description": "Неверные данные",
+                        "description": "Нет групп в заявке",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -386,60 +144,8 @@
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Удаляет группу пациентов из заявки-черновика",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "many-to-many"
-                ],
-                "summary": "Удалить группу из черновика",
-                "parameters": [
-                    {
-                        "description": "ID группы для удаления",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/handler.mmDeleteReq"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "ID заявки",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "integer"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Неверные данные",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Требуется аутентификация",
+                    "404": {
+                        "description": "Черновик не найден",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -453,24 +159,125 @@
                 }
             }
         },
-        "/api/cavi-calculations/{id}": {
+        "/cavi-calculations/draft/groups": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет индекс CAVI для группы в заявке-черновике текущего пользователя.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "calculation-groups"
+                ],
+                "summary": "Обновить группу в черновике",
+                "parameters": [
+                    {
+                        "description": "Данные для обновления",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.DraftGroupUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Группа обновлена",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные данные или черновик не найден",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Удаляет группу из заявки-черновика текущего пользователя.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "calculation-groups"
+                ],
+                "summary": "Удалить группу из черновика",
+                "parameters": [
+                    {
+                        "description": "ID группы",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.DraftGroupDeleteRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Группа удалена",
+                        "schema": {
+                            "$ref": "#/definitions/handler.DraftGroupResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверный ID или группа не найдена в черновике",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/cavi-calculations/{id}": {
             "get": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Возвращает детальную информацию о заявке. Обычные пользователи могут видеть только свои заявки",
+                "description": "Возвращает детальную информацию о заявке, включая все группы в её составе.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "calculations"
                 ],
-                "summary": "Получить заявку по ID",
+                "summary": "Получить заявку",
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "ID заявки",
                         "name": "id",
                         "in": "path",
@@ -481,7 +288,7 @@
                     "200": {
                         "description": "Информация о заявке",
                         "schema": {
-                            "$ref": "#/definitions/handler.CalculationDetailResponse"
+                            "$ref": "#/definitions/handler.CalculationResponse"
                         }
                     },
                     "400": {
@@ -496,12 +303,6 @@
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     },
-                    "403": {
-                        "description": "Доступ запрещен",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
                     "404": {
                         "description": "Заявка не найдена",
                         "schema": {
@@ -516,7 +317,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет поля заявки (систолическое давление, диастолическое давление, скорость пульсовой волны)",
+                "description": "Обновляет поля заявки: систолическое/диастолическое давление, скорость пульсовой волны.",
                 "consumes": [
                     "application/json"
                 ],
@@ -530,6 +331,7 @@
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "ID заявки",
                         "name": "id",
                         "in": "path",
@@ -541,15 +343,15 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.calcUpdateReq"
+                            "$ref": "#/definitions/handler.CalculationUpdateRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Обновленная заявка",
+                        "description": "Заявка обновлена",
                         "schema": {
-                            "$ref": "#/definitions/ds.CaviCalculation"
+                            "$ref": "#/definitions/handler.SuccessResponse"
                         }
                     },
                     "400": {
@@ -578,7 +380,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Удаляет заявку-черновик (доступно только создателю)",
+                "description": "Мягкое удаление заявки-черновика. Доступно только создателю заявки. Удаляет связи с группами.",
                 "produces": [
                     "application/json"
                 ],
@@ -589,6 +391,7 @@
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "ID заявки",
                         "name": "id",
                         "in": "path",
@@ -603,7 +406,7 @@
                         }
                     },
                     "400": {
-                        "description": "Неверные данные",
+                        "description": "Неверный ID или заявка не является черновиком",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -629,72 +432,14 @@
                 }
             }
         },
-        "/api/cavi-calculations/{id}/form": {
+        "/cavi-calculations/{id}/moderate": {
             "put": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Изменяет статус заявки с draft на formed (только для модераторов)",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "calculations"
-                ],
-                "summary": "Сформировать заявку",
-                "parameters": [
-                    {
-                        "type": "integer",
-                        "description": "ID заявки",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Заявка сформирована",
-                        "schema": {
-                            "$ref": "#/definitions/handler.SuccessResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Неверные данные",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "403": {
-                        "description": "Требуется роль модератора",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "404": {
-                        "description": "Заявка не найдена",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/cavi-calculations/{id}/moderate": {
-            "put": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Изменяет статус заявки с formed на completed или rejected (только для модераторов)",
+                "description": "Завершает или отклоняет сформированную заявку. Доступно только модераторам. При завершении устанавливается количество групп.",
                 "consumes": [
                     "application/json"
                 ],
@@ -704,22 +449,23 @@
                 "tags": [
                     "calculations"
                 ],
-                "summary": "Завершить/отклонить заявку",
+                "summary": "Модерировать заявку",
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "ID заявки",
                         "name": "id",
                         "in": "path",
                         "required": true
                     },
                     {
-                        "description": "Действие (complete или reject)",
+                        "description": "Действие модератора",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.moderateReq"
+                            "$ref": "#/definitions/handler.ModerateRequest"
                         }
                     }
                 ],
@@ -727,11 +473,17 @@
                     "200": {
                         "description": "Заявка обработана",
                         "schema": {
-                            "$ref": "#/definitions/handler.SuccessResponse"
+                            "$ref": "#/definitions/handler.CalculationResponse"
                         }
                     },
                     "400": {
-                        "description": "Неверные данные",
+                        "description": "Неверные данные или статус заявки",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -757,30 +509,39 @@
                 }
             }
         },
-        "/api/cavi-groups": {
+        "/cavi-groups": {
             "get": {
-                "description": "Возвращает список групп пациентов с возможностью фильтрации",
+                "description": "Возвращает список всех групп пациентов с возможностью фильтрации по названию, возрастной группе и типу заболевания.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "groups"
                 ],
-                "summary": "Получить список групп",
+                "summary": "Список групп",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Поиск по названию",
+                        "description": "Поиск по названию (частичное совпадение)",
                         "name": "title",
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "young",
+                            "middle",
+                            "elderly"
+                        ],
                         "type": "string",
                         "description": "Фильтр по возрастной группе",
                         "name": "age_group",
                         "in": "query"
                     },
                     {
+                        "enum": [
+                            "diabetes",
+                            "hypertension"
+                        ],
                         "type": "string",
                         "description": "Фильтр по типу заболевания",
                         "name": "disease_type",
@@ -793,7 +554,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/ds.CaviGroup"
+                                "$ref": "#/definitions/handler.GroupResponse"
                             }
                         }
                     },
@@ -811,7 +572,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Создает новую группу пациентов (только для модераторов)",
+                "description": "Создаёт новую группу пациентов. Доступно только модераторам.",
                 "consumes": [
                     "application/json"
                 ],
@@ -829,19 +590,25 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.groupCreateReq"
+                            "$ref": "#/definitions/handler.GroupCreateRequest"
                         }
                     }
                 ],
                 "responses": {
                     "201": {
-                        "description": "Созданная группа",
+                        "description": "Группа создана",
                         "schema": {
-                            "$ref": "#/definitions/ds.CaviGroup"
+                            "$ref": "#/definitions/handler.GroupResponse"
                         }
                     },
                     "400": {
                         "description": "Неверные данные",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -861,19 +628,20 @@
                 }
             }
         },
-        "/api/cavi-groups/{id}": {
+        "/cavi-groups/{id}": {
             "get": {
-                "description": "Возвращает детальную информацию о группе пациентов",
+                "description": "Возвращает детальную информацию о группе пациентов по её ID.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "groups"
                 ],
-                "summary": "Получить группу по ID",
+                "summary": "Получить группу",
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "ID группы",
                         "name": "id",
                         "in": "path",
@@ -884,7 +652,7 @@
                     "200": {
                         "description": "Информация о группе",
                         "schema": {
-                            "$ref": "#/definitions/ds.CaviGroup"
+                            "$ref": "#/definitions/handler.GroupResponse"
                         }
                     },
                     "400": {
@@ -907,7 +675,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Обновляет данные группы пациентов (только для модераторов)",
+                "description": "Обновляет данные группы пациентов. Доступно только модераторам.",
                 "consumes": [
                     "application/json"
                 ],
@@ -921,6 +689,7 @@
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "ID группы",
                         "name": "id",
                         "in": "path",
@@ -932,19 +701,25 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/handler.groupUpdateReq"
+                            "$ref": "#/definitions/handler.GroupUpdateRequest"
                         }
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Обновленная группа",
+                        "description": "Группа обновлена",
                         "schema": {
-                            "$ref": "#/definitions/ds.CaviGroup"
+                            "$ref": "#/definitions/handler.GroupResponse"
                         }
                     },
                     "400": {
                         "description": "Неверные данные",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -969,7 +744,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Удаляет группу пациентов (soft-delete, только для модераторов)",
+                "description": "Мягкое удаление группы (is_deleted = true). Также удаляет изображение. Доступно только модераторам.",
                 "produces": [
                     "application/json"
                 ],
@@ -980,6 +755,7 @@
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "ID группы",
                         "name": "id",
                         "in": "path",
@@ -999,6 +775,12 @@
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
                     "403": {
                         "description": "Требуется роль модератора",
                         "schema": {
@@ -1014,24 +796,25 @@
                 }
             }
         },
-        "/api/cavi-groups/{id}/add-to-draft": {
+        "/cavi-groups/{id}/add-to-draft": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Добавляет группу пациентов в заявку-черновик пользователя",
+                "description": "Добавляет группу в заявку-черновик текущего пользователя. Если черновика нет — создаёт новый.",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "groups"
                 ],
-                "summary": "Добавить группу в черновик",
+                "summary": "Добавить в черновик",
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "ID группы",
                         "name": "id",
                         "in": "path",
@@ -1040,13 +823,13 @@
                 ],
                 "responses": {
                     "201": {
-                        "description": "ID заявки",
+                        "description": "Группа добавлена в черновик",
                         "schema": {
                             "$ref": "#/definitions/handler.AddToDraftResponse"
                         }
                     },
                     "400": {
-                        "description": "Неверный ID",
+                        "description": "Неверный ID или группа уже в черновике",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -1056,24 +839,18 @@
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
-                    },
-                    "500": {
-                        "description": "Внутренняя ошибка сервера",
-                        "schema": {
-                            "$ref": "#/definitions/handler.ErrorResponse"
-                        }
                     }
                 }
             }
         },
-        "/api/cavi-groups/{id}/image": {
+        "/cavi-groups/{id}/image": {
             "post": {
                 "security": [
                     {
                         "BearerAuth": []
                     }
                 ],
-                "description": "Загружает или обновляет изображение группы (только для модераторов)",
+                "description": "Загружает или заменяет изображение группы. Доступно только модераторам.",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -1083,10 +860,11 @@
                 "tags": [
                     "groups"
                 ],
-                "summary": "Загрузить изображение группы",
+                "summary": "Загрузить изображение",
                 "parameters": [
                     {
                         "type": "integer",
+                        "example": 1,
                         "description": "ID группы",
                         "name": "id",
                         "in": "path",
@@ -1094,7 +872,7 @@
                     },
                     {
                         "type": "file",
-                        "description": "Файл изображения",
+                        "description": "Файл изображения (JPEG, PNG)",
                         "name": "image",
                         "in": "formData",
                         "required": true
@@ -1102,7 +880,7 @@
                 ],
                 "responses": {
                     "200": {
-                        "description": "URL изображения",
+                        "description": "Изображение загружено",
                         "schema": {
                             "$ref": "#/definitions/handler.ImageUploadResponse"
                         }
@@ -1113,8 +891,293 @@
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
                     },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
                     "403": {
                         "description": "Требуется роль модератора",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/login": {
+            "post": {
+                "description": "Аутентифицирует пользователя и возвращает JWT токены (access + refresh).",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Вход",
+                "parameters": [
+                    {
+                        "description": "Данные для входа",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UserLoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Успешный вход",
+                        "schema": {
+                            "$ref": "#/definitions/handler.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные данные",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Неверные учётные данные",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Добавляет access токен в blacklist Redis и удаляет refresh токен.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Выход",
+                "responses": {
+                    "200": {
+                        "description": "Успешный выход",
+                        "schema": {
+                            "$ref": "#/definitions/handler.SuccessResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/me": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Возвращает информацию о текущем авторизованном пользователе.",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Текущий пользователь",
+                "responses": {
+                    "200": {
+                        "description": "Данные пользователя",
+                        "schema": {
+                            "$ref": "#/definitions/handler.UserResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Пользователь не найден",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Обновляет username и/или пароль текущего пользователя.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Обновить профиль",
+                "parameters": [
+                    {
+                        "description": "Данные для обновления",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UserUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Профиль обновлён",
+                        "schema": {
+                            "$ref": "#/definitions/handler.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные данные или username занят",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Требуется аутентификация",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Пользователь не найден",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/refresh": {
+            "post": {
+                "description": "Обновляет access и refresh токены по валидному refresh токену.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Обновить токены",
+                "parameters": [
+                    {
+                        "description": "Refresh токен",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.RefreshRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Новые токены",
+                        "schema": {
+                            "$ref": "#/definitions/handler.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные данные",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Невалидный или истёкший refresh токен",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Внутренняя ошибка сервера",
+                        "schema": {
+                            "$ref": "#/definitions/handler.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/users/register": {
+            "post": {
+                "description": "Создаёт нового пользователя в системе. Пароль хешируется с помощью bcrypt.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Регистрация",
+                "parameters": [
+                    {
+                        "description": "Данные для регистрации",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/handler.UserRegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Пользователь создан",
+                        "schema": {
+                            "$ref": "#/definitions/handler.UserResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Неверные данные или пользователь существует",
                         "schema": {
                             "$ref": "#/definitions/handler.ErrorResponse"
                         }
@@ -1130,136 +1193,8 @@
         }
     },
     "definitions": {
-        "ds.CaviCalculation": {
-            "type": "object",
-            "properties": {
-                "calculationGroups": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/ds.CaviCalculationGroup"
-                    }
-                },
-                "completedAt": {
-                    "type": "string"
-                },
-                "createdAt": {
-                    "type": "string"
-                },
-                "creator": {
-                    "$ref": "#/definitions/ds.User"
-                },
-                "creatorLogin": {
-                    "type": "string"
-                },
-                "creatorUsername": {
-                    "type": "string"
-                },
-                "diastolicPressure": {
-                    "type": "integer"
-                },
-                "formedAt": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "moderator": {
-                    "$ref": "#/definitions/ds.User"
-                },
-                "moderatorLogin": {
-                    "type": "string"
-                },
-                "moderatorUsername": {
-                    "type": "string"
-                },
-                "pulseWaveVelocity": {
-                    "type": "number",
-                    "format": "float64"
-                },
-                "resultCount": {
-                    "type": "integer"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "systolicPressure": {
-                    "type": "integer"
-                }
-            }
-        },
-        "ds.CaviCalculationGroup": {
-            "type": "object",
-            "properties": {
-                "calculatedCAVI": {
-                    "type": "number"
-                },
-                "calculationID": {
-                    "type": "integer"
-                },
-                "caviindex": {
-                    "type": "number"
-                },
-                "group": {
-                    "$ref": "#/definitions/ds.CaviGroup"
-                },
-                "groupID": {
-                    "type": "integer"
-                },
-                "id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "ds.CaviGroup": {
-            "type": "object",
-            "properties": {
-                "ageGroup": {
-                    "type": "string"
-                },
-                "basePrice": {
-                    "type": "number"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "diseaseType": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "integer"
-                },
-                "imageURL": {
-                    "type": "string"
-                },
-                "isDeleted": {
-                    "type": "boolean"
-                },
-                "isSelected": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "ds.User": {
-            "type": "object",
-            "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "isModerator": {
-                    "type": "boolean"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
         "handler.AddToDraftResponse": {
+            "description": "ID заявки-черновика",
             "type": "object",
             "properties": {
                 "calculation_id": {
@@ -1268,26 +1203,99 @@
                 }
             }
         },
-        "handler.CalculationDetailResponse": {
+        "handler.CalculationGroupResponse": {
+            "description": "Информация о группе в составе заявки",
             "type": "object",
             "properties": {
-                "data": {
-                    "$ref": "#/definitions/ds.CaviCalculation"
+                "cavi_index": {
+                    "type": "number",
+                    "example": 7.5
+                },
+                "group": {
+                    "$ref": "#/definitions/handler.GroupResponse"
+                },
+                "group_id": {
+                    "type": "integer",
+                    "example": 1
                 }
             }
         },
-        "handler.CalculationsListResponse": {
+        "handler.CalculationResponse": {
+            "description": "Полная информация о заявке на расчёт CAVI",
             "type": "object",
             "properties": {
-                "data": {
+                "calculation_groups": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/ds.CaviCalculation"
+                        "$ref": "#/definitions/handler.CalculationGroupResponse"
                     }
+                },
+                "creator_login": {
+                    "type": "string",
+                    "example": "user1"
+                },
+                "date_completed": {
+                    "type": "string",
+                    "example": "2025-01-15T12:00:00Z"
+                },
+                "date_created": {
+                    "type": "string",
+                    "example": "2025-01-15T10:30:00Z"
+                },
+                "date_formed": {
+                    "type": "string",
+                    "example": "2025-01-15T11:00:00Z"
+                },
+                "diastolic_pressure": {
+                    "type": "integer",
+                    "example": 80
+                },
+                "groups_count": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "moderator_login": {
+                    "type": "string",
+                    "example": "moderator1"
+                },
+                "pulse_wave_velocity": {
+                    "type": "number",
+                    "example": 8.5
+                },
+                "status": {
+                    "type": "string",
+                    "example": "draft"
+                },
+                "systolic_pressure": {
+                    "type": "integer",
+                    "example": 120
+                }
+            }
+        },
+        "handler.CalculationUpdateRequest": {
+            "description": "Данные для обновления полей заявки (давление, скорость пульсовой волны)",
+            "type": "object",
+            "properties": {
+                "diastolic_pressure": {
+                    "type": "integer",
+                    "example": 80
+                },
+                "pulse_wave_velocity": {
+                    "type": "number",
+                    "example": 8.5
+                },
+                "systolic_pressure": {
+                    "type": "integer",
+                    "example": 120
                 }
             }
         },
         "handler.CartIconResponse": {
+            "description": "Информация о черновике заявки пользователя",
             "type": "object",
             "properties": {
                 "calculation_id": {
@@ -1300,25 +1308,241 @@
                 }
             }
         },
+        "handler.DraftGroupDeleteRequest": {
+            "description": "ID группы для удаления из черновика заявки",
+            "type": "object",
+            "required": [
+                "group_id"
+            ],
+            "properties": {
+                "group_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "handler.DraftGroupResponse": {
+            "description": "ID заявки-черновика после операции",
+            "type": "object",
+            "properties": {
+                "calculation_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
+        "handler.DraftGroupUpdateRequest": {
+            "description": "Данные для обновления группы в черновике (индекс CAVI)",
+            "type": "object",
+            "required": [
+                "group_id"
+            ],
+            "properties": {
+                "cavi_index": {
+                    "type": "number",
+                    "example": 7.5
+                },
+                "group_id": {
+                    "type": "integer",
+                    "example": 1
+                }
+            }
+        },
         "handler.ErrorResponse": {
+            "description": "Стандартный ответ с ошибкой",
             "type": "object",
             "properties": {
                 "message": {
                     "type": "string",
-                    "example": "неверные учетные данные"
+                    "example": "invalid input"
+                },
+                "status": {
+                    "type": "string",
+                    "example": "fail"
+                }
+            }
+        },
+        "handler.GroupCreateRequest": {
+            "description": "Данные для создания новой группы пациентов",
+            "type": "object",
+            "required": [
+                "age_group",
+                "name"
+            ],
+            "properties": {
+                "age_group": {
+                    "type": "string",
+                    "enum": [
+                        "young",
+                        "middle",
+                        "elderly"
+                    ],
+                    "example": "young"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Эластичные сосуды с низким уровнем жесткости"
+                },
+                "disease_type": {
+                    "type": "string",
+                    "enum": [
+                        "diabetes",
+                        "hypertension"
+                    ],
+                    "example": "diabetes"
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Молодые пациенты"
+                }
+            }
+        },
+        "handler.GroupResponse": {
+            "description": "Информация о группе пациентов",
+            "type": "object",
+            "properties": {
+                "age_group": {
+                    "type": "string",
+                    "example": "young"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Эластичные сосуды с низким уровнем жесткости"
+                },
+                "disease_type": {
+                    "type": "string",
+                    "example": "diabetes"
+                },
+                "id": {
+                    "type": "integer",
+                    "example": 1
+                },
+                "image_url": {
+                    "type": "string",
+                    "example": "http://localhost:9000/cavi-images/diagrams/1.jpg"
+                },
+                "is_deleted": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "is_selected": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Молодые пациенты (до 35 лет)"
+                }
+            }
+        },
+        "handler.GroupUpdateRequest": {
+            "description": "Данные для обновления группы пациентов",
+            "type": "object",
+            "properties": {
+                "age_group": {
+                    "type": "string",
+                    "enum": [
+                        "young",
+                        "middle",
+                        "elderly"
+                    ],
+                    "example": "middle"
+                },
+                "description": {
+                    "type": "string",
+                    "example": "Обновлённое описание"
+                },
+                "disease_type": {
+                    "type": "string",
+                    "enum": [
+                        "diabetes",
+                        "hypertension"
+                    ],
+                    "example": "hypertension"
+                },
+                "is_selected": {
+                    "type": "boolean",
+                    "example": true
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Обновлённое название"
                 }
             }
         },
         "handler.ImageUploadResponse": {
+            "description": "URL загруженного изображения",
             "type": "object",
             "properties": {
                 "image_url": {
                     "type": "string",
-                    "example": "http://localhost:8000/storage/groups/1.jpg"
+                    "example": "http://localhost:9000/cavi-images/diagrams/1.jpg"
                 }
             }
         },
-        "handler.LoginRequest": {
+        "handler.LoginResponse": {
+            "description": "Токены и информация о пользователе после входа",
+            "type": "object",
+            "properties": {
+                "is_moderator": {
+                    "type": "boolean",
+                    "example": false
+                },
+                "refresh_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
+                "token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                },
+                "username": {
+                    "type": "string",
+                    "example": "user1"
+                }
+            }
+        },
+        "handler.ModerateRequest": {
+            "description": "Действие модератора над заявкой",
+            "type": "object",
+            "required": [
+                "action"
+            ],
+            "properties": {
+                "action": {
+                    "type": "string",
+                    "enum": [
+                        "complete",
+                        "reject"
+                    ],
+                    "example": "complete"
+                }
+            }
+        },
+        "handler.RefreshRequest": {
+            "description": "Refresh токен для получения новой пары токенов",
+            "type": "object",
+            "required": [
+                "refresh_token"
+            ],
+            "properties": {
+                "refresh_token": {
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                }
+            }
+        },
+        "handler.SuccessResponse": {
+            "description": "Стандартный успешный ответ",
+            "type": "object",
+            "properties": {
+                "status": {
+                    "type": "string",
+                    "example": "ok"
+                }
+            }
+        },
+        "handler.UserLoginRequest": {
             "description": "Данные для входа в систему",
             "type": "object",
             "required": [
@@ -1336,33 +1560,7 @@
                 }
             }
         },
-        "handler.LoginResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "аутентификация успешна"
-                },
-                "token": {
-                    "type": "string",
-                    "example": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-                },
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "is_moderator": {
-                            "type": "boolean",
-                            "example": false
-                        },
-                        "username": {
-                            "type": "string",
-                            "example": "user1"
-                        }
-                    }
-                }
-            }
-        },
-        "handler.RegisterRequest": {
+        "handler.UserRegisterRequest": {
             "description": "Данные для регистрации нового пользователя",
             "type": "object",
             "required": [
@@ -1380,38 +1578,22 @@
                 }
             }
         },
-        "handler.RegisterResponse": {
+        "handler.UserResponse": {
+            "description": "Информация о пользователе",
             "type": "object",
             "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "пользователь успешно зарегистрирован"
+                "is_moderator": {
+                    "type": "boolean",
+                    "example": false
                 },
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "is_moderator": {
-                            "type": "boolean",
-                            "example": false
-                        },
-                        "username": {
-                            "type": "string",
-                            "example": "newuser"
-                        }
-                    }
-                }
-            }
-        },
-        "handler.SuccessResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
+                "username": {
                     "type": "string",
-                    "example": "операция выполнена успешно"
+                    "example": "user1"
                 }
             }
         },
-        "handler.UpdateProfileRequest": {
+        "handler.UserUpdateRequest": {
+            "description": "Данные для обновления профиля пользователя",
             "type": "object",
             "properties": {
                 "password": {
@@ -1423,133 +1605,11 @@
                     "example": "newusername"
                 }
             }
-        },
-        "handler.UpdateProfileResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "профиль успешно обновлен"
-                },
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "is_moderator": {
-                            "type": "boolean",
-                            "example": false
-                        },
-                        "username": {
-                            "type": "string",
-                            "example": "newusername"
-                        }
-                    }
-                }
-            }
-        },
-        "handler.UserInfoResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string",
-                    "example": "данные пользователя"
-                },
-                "user": {
-                    "type": "object",
-                    "properties": {
-                        "is_moderator": {
-                            "type": "boolean",
-                            "example": false
-                        },
-                        "username": {
-                            "type": "string",
-                            "example": "user1"
-                        }
-                    }
-                }
-            }
-        },
-        "handler.calcUpdateReq": {
-            "type": "object",
-            "properties": {
-                "diastolic_pressure": {
-                    "type": "integer"
-                },
-                "pulse_wave_velocity": {
-                    "type": "number"
-                },
-                "systolic_pressure": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handler.groupCreateReq": {
-            "type": "object",
-            "properties": {
-                "age_group": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "disease_type": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.groupUpdateReq": {
-            "type": "object",
-            "properties": {
-                "age_group": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "disease_type": {
-                    "type": "string"
-                },
-                "is_selected": {
-                    "type": "boolean"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "handler.mmDeleteReq": {
-            "type": "object",
-            "properties": {
-                "group_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handler.mmUpdateReq": {
-            "type": "object",
-            "properties": {
-                "cavi_index": {
-                    "type": "number"
-                },
-                "group_id": {
-                    "type": "integer"
-                }
-            }
-        },
-        "handler.moderateReq": {
-            "type": "object",
-            "properties": {
-                "action": {
-                    "type": "string"
-                }
-            }
         }
     },
     "securityDefinitions": {
         "BearerAuth": {
-            "description": "Введите токен в формате: Bearer {token}",
+            "description": "JWT токен в формате: Bearer {token}",
             "type": "apiKey",
             "name": "Authorization",
             "in": "header"

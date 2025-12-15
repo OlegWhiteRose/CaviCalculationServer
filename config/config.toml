@@ -1,2 +1,2 @@
 CaviServerHost = "localhost"
-CaviServerPort = 8000
+CaviServerPort = 8080

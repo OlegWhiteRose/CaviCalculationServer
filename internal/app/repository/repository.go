@@ -10,7 +10,7 @@ type Repository struct {
 }
 
 func New(dsn string) (*Repository, error) {
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{}) 
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
 		return nil, err
 	}
@@ -20,7 +20,6 @@ func New(dsn string) (*Repository, error) {
 	}, nil
 }
 
-// DB возвращает экземпляр базы данных для прямых запросов
 func (r *Repository) DB() *gorm.DB {
 	return r.db
 }

@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 	"os"
-	"io"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -24,7 +24,6 @@ func NewMinIOStorage() (*MinIOStorage, error) {
 	secretAccessKey := getEnv("MINIO_SECRET_KEY", "cavi_password123")
 	bucketName := getEnv("MINIO_BUCKET", "cavi-images")
 
-
 	minioClient, err := minio.New(minioEndpoint, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
 		Secure: false,
@@ -39,7 +38,6 @@ func NewMinIOStorage() (*MinIOStorage, error) {
 		endpoint:   nginxEndpoint,
 	}
 
-
 	err = storage.createBucketIfNotExists()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create bucket: %v", err)
@@ -51,19 +49,16 @@ func NewMinIOStorage() (*MinIOStorage, error) {
 func (s *MinIOStorage) createBucketIfNotExists() error {
 	ctx := context.Background()
 
-
 	exists, err := s.client.BucketExists(ctx, s.bucketName)
 	if err != nil {
 		return err
 	}
 
 	if !exists {
-
 		err = s.client.MakeBucket(ctx, s.bucketName, minio.MakeBucketOptions{})
 		if err != nil {
 			return err
 		}
-
 
 		policy := fmt.Sprintf(`{
 			"Version": "2012-10-17",
@@ -97,12 +92,6 @@ func (s *MinIOStorage) GetImageURL(filename string) string {
 
 func (s *MinIOStorage) GetImageURLByID(id int) string {
 	return fmt.Sprintf("http://%s/%s/diagrams/%d.jpg", s.endpoint, s.bucketName, id)
-}
-
-func (s *MinIOStorage) GetImageURLByIDWithDefault(id int) string {
-	imageURL := s.GetImageURLByID(id)
-	// В HTML-шаблоне или на фронте будет использован onerror для фолбэка на дефолтное изображение
-	return imageURL
 }
 
 func (s *MinIOStorage) GetDefaultImageURL() string {

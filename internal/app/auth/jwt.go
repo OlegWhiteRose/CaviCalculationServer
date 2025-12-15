@@ -65,16 +65,14 @@ func ValidateToken(tokenString string) (*Claims, error) {
 
 type RefreshClaims struct {
 	Username string `json:"username"`
-	UserID   int    `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
-func GenerateRefreshToken(userID int, username string) (string, error) {
+func GenerateRefreshToken(username string) (string, error) {
 	expirationTime := time.Now().Add(refreshTokenTTL)
 
 	claims := &RefreshClaims{
 		Username: username,
-		UserID:   userID,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
@@ -113,6 +111,10 @@ func ValidateRefreshToken(tokenString string) (*RefreshClaims, error) {
 
 func RefreshTokenTTL() time.Duration {
 	return refreshTokenTTL
+}
+
+func AccessTokenTTL() time.Duration {
+	return accessTokenTTL
 }
 
 func getEnv(key, defaultValue string) string {

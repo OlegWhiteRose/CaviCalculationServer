@@ -9,6 +9,12 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+const (
+	servicePrefix    = "cavi_service."
+	jwtBlacklistKey  = servicePrefix + "jwt_blacklist."
+	refreshTokenKey  = servicePrefix + "refresh."
+)
+
 type Client struct {
 	rdb *redis.Client
 }
@@ -34,35 +40,63 @@ func NewRedisClient() (*Client, error) {
 	return &Client{rdb: rdb}, nil
 }
 
-// Set сохраняет значение в Redis с TTL
 func (c *Client) Set(ctx context.Context, key string, value interface{}, expiration time.Duration) error {
 	return c.rdb.Set(ctx, key, value, expiration).Err()
 }
 
-// Get получает значение из Redis
 func (c *Client) Get(ctx context.Context, key string) (string, error) {
 	return c.rdb.Get(ctx, key).Result()
 }
 
-// Delete удаляет ключ из Redis
 func (c *Client) Delete(ctx context.Context, key string) error {
 	return c.rdb.Del(ctx, key).Err()
 }
 
-// Exists проверяет существование ключа
 func (c *Client) Exists(ctx context.Context, key string) (bool, error) {
 	result, err := c.rdb.Exists(ctx, key).Result()
 	return result > 0, err
 }
 
-// GetAllKeys возвращает все ключи по паттерну (для демонстрации сессий)
 func (c *Client) GetAllKeys(ctx context.Context, pattern string) ([]string, error) {
 	return c.rdb.Keys(ctx, pattern).Result()
 }
 
-// Close закрывает соединение с Redis
 func (c *Client) Close() error {
 	return c.rdb.Close()
+}
+
+// добавляет JWT токен в blacklist на время его жизни
+func (c *Client) WriteJWTToBlacklist(ctx context.Context, jwtStr string, jwtTTL time.Duration) error {
+	key := jwtBlacklistKey + jwtStr
+	return c.rdb.Set(ctx, key, "blacklisted", jwtTTL).Err()
+}
+
+// проверяет, находится ли JWT в blacklist
+func (c *Client) CheckJWTInBlacklist(ctx context.Context, jwtStr string) (bool, error) {
+	key := jwtBlacklistKey + jwtStr
+	result, err := c.rdb.Exists(ctx, key).Result()
+	if err != nil {
+		return false, err
+	}
+	return result > 0, nil
+}
+
+// сохраняет refresh токен для пользователя
+func (c *Client) SetRefreshToken(ctx context.Context, username string, token string, ttl time.Duration) error {
+	key := refreshTokenKey + username
+	return c.rdb.Set(ctx, key, token, ttl).Err()
+}
+
+// получает refresh токен пользователя
+func (c *Client) GetRefreshToken(ctx context.Context, username string) (string, error) {
+	key := refreshTokenKey + username
+	return c.rdb.Get(ctx, key).Result()
+}
+
+// удаляет refresh токен пользователя
+func (c *Client) DeleteRefreshToken(ctx context.Context, username string) error {
+	key := refreshTokenKey + username
+	return c.rdb.Del(ctx, key).Err()
 }
 
 func getEnv(key, defaultValue string) string {

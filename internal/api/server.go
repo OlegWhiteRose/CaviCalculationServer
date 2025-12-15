@@ -66,47 +66,37 @@ func StartServer() {
 	r.POST("/add-group", h.AddGroupToCalculation)
 	r.POST("/calculations/:id/delete", h.SoftDeleteCalculationByID)
 
+	// Swagger UI
+	log.Println("Registering Swagger UI at /swagger/*any")
 	r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	api := r.Group("/api")
 	{
-		auth := api.Group("/auth")
-		{
-			auth.POST("/register", h.Register)
-			auth.POST("/login", h.Login)
-			auth.POST("/refresh", h.RefreshToken)
-			auth.POST("/logout", authMiddleware.RequireAuth(), h.Logout)
-			auth.GET("/me", authMiddleware.RequireAuth(), h.GetCurrentUser)
-			auth.PUT("/me", authMiddleware.RequireAuth(), h.UpdateProfile)
-		}
+		api.POST("/users/register", h.UsersRegisterAPI)
+		api.POST("/users/login", h.UsersLoginAPI)
+		api.POST("/users/logout", authMiddleware.RequireAuth(), h.UsersLogoutAPI)
+		api.POST("/users/refresh", h.UsersRefreshAPI)
+		api.GET("/users/me", authMiddleware.RequireAuth(), h.UsersMeAPI)
+		api.PUT("/users/me", authMiddleware.RequireAuth(), h.UsersUpdateMeAPI)
 
-		groups := api.Group("/cavi-groups")
-		{
-			groups.GET("", h.GetGroupsAPI)
-			groups.GET("/:id", h.GetGroupAPI)
+		api.GET("/cavi-groups", h.GetGroupsAPI)
+		api.GET("/cavi-groups/:id", h.GetGroupAPI)
+		api.POST("/cavi-groups", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.CreateGroupAPI)
+		api.PUT("/cavi-groups/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UpdateGroupAPI)
+		api.DELETE("/cavi-groups/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.DeleteGroupAPI)
+		api.POST("/cavi-groups/:id/image", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UploadGroupImageAPI)
+		api.POST("/cavi-groups/:id/add-to-draft", authMiddleware.RequireAuth(), h.AddGroupToDraftFromGroupAPI)
 
-			groups.POST("", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.CreateGroupAPI)
-			groups.PUT("/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UpdateGroupAPI)
-			groups.DELETE("/:id", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.DeleteGroupAPI)
-			groups.POST("/:id/image", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.UploadGroupImageAPI)
+		api.GET("/cavi-calculations/draft", authMiddleware.RequireAuth(), h.GetCartIconAPI)
+		api.GET("/cavi-calculations", authMiddleware.RequireAuth(), h.ListCalculationsAPI)
+		api.GET("/cavi-calculations/:id", authMiddleware.RequireAuth(), h.GetCalculationAPI)
+		api.PUT("/cavi-calculations/:id", authMiddleware.RequireAuth(), h.UpdateCalculationAPI)
+		api.PUT("/cavi-calculations/draft/form", authMiddleware.RequireAuth(), h.FormCalculationAPI)
+		api.PUT("/cavi-calculations/:id/moderate", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.ModerateCalculationAPI)
+		api.DELETE("/cavi-calculations/:id", authMiddleware.RequireAuth(), h.DeleteCalculationAPI)
 
-			groups.POST("/:id/add-to-draft", authMiddleware.RequireAuth(), h.AddGroupToDraftFromGroupAPI)
-		}
-
-		calculations := api.Group("/cavi-calculations")
-		{
-			calculations.GET("/draft", authMiddleware.RequireAuth(), h.GetCartIconAPI)
-			calculations.GET("", authMiddleware.RequireAuth(), h.ListCalculationsAPI)
-			calculations.GET("/:id", authMiddleware.RequireAuth(), h.GetCalculationAPI)
-			calculations.PUT("/:id", authMiddleware.RequireAuth(), h.UpdateCalculationAPI)
-			calculations.PUT("/:id/form", authMiddleware.RequireAuth(), h.FormCalculationAPI)
-			calculations.DELETE("/:id", authMiddleware.RequireAuth(), h.DeleteCalculationAPI)
-
-			calculations.PUT("/:id/moderate", authMiddleware.RequireAuth(), authMiddleware.RequireModerator(), h.ModerateCalculationAPI)
-
-			calculations.DELETE("/draft/groups", authMiddleware.RequireAuth(), h.RemoveItemFromDraftAPI)
-			calculations.PUT("/draft/groups", authMiddleware.RequireAuth(), h.UpdateItemInDraftAPI)
-		}
+		api.DELETE("/cavi-calculations/draft/groups", authMiddleware.RequireAuth(), h.RemoveItemFromDraftAPI)
+		api.PUT("/cavi-calculations/draft/groups", authMiddleware.RequireAuth(), h.UpdateItemInDraftAPI)
 	}
 
 	serverAddr := fmt.Sprintf("%s:%d", cfg.CaviServerHost, cfg.CaviServerPort)
