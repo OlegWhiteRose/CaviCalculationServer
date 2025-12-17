@@ -30,10 +30,10 @@ type CaviCalculation struct {
 	PulseWaveVelocity *float64
 	GroupsCount       *int    `gorm:"column:groups_count"`
 	CreatorLogin      string  `gorm:"type:varchar(150);not null" json:"Creator"`
-	ModeratorLogin    *string `gorm:"type:varchar(150)" json:"Moderator"`
+	DoctorLogin       *string `gorm:"column:doctor_login;type:varchar(150)" json:"Doctor"`
 
 	Creator           *User                  `gorm:"foreignKey:CreatorLogin;references:Username" json:"-"`
-	Moderator         *User                  `gorm:"foreignKey:ModeratorLogin;references:Username" json:"-"`
+	Doctor            *User                  `gorm:"foreignKey:DoctorLogin;references:Username" json:"-"`
 	CalculationGroups []CaviCalculationGroup `gorm:"foreignKey:CalculationID"`
 }
 
@@ -57,9 +57,9 @@ func (CaviCalculationGroup) TableName() string {
 
 // User - без ID, только username как primary key
 type User struct {
-	Username    string `gorm:"primaryKey;type:varchar(150)" json:"username"`
-	Password    string `gorm:"type:varchar(128);not null" json:"-"`
-	IsModerator bool   `gorm:"type:boolean;not null;default:false" json:"is_moderator"`
+	Username string `gorm:"primaryKey;type:varchar(150)" json:"username"`
+	Password string `gorm:"type:varchar(128);not null" json:"-"`
+	IsDoctor bool   `gorm:"column:is_doctor;type:boolean;not null;default:false" json:"is_doctor"`
 }
 
 func (User) TableName() string { return "auth_user" }

@@ -26,12 +26,12 @@
           ], "type": "text/javascript" } }]
         },
         {
-          "name": "1.2 Register moderator",
+          "name": "1.2 Register doctor",
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/users/register",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\"username\":\"moderator\",\"password\":\"password123\"}" }
+            "body": { "mode": "raw", "raw": "{\"username\":\"doctor\",\"password\":\"password123\"}" }
           },
           "event": [{ "listen": "test", "script": { "exec": [
             "pm.test('201 Created or 400 exists', () => [201,400].includes(pm.response.code));"
@@ -82,17 +82,17 @@
           ], "type": "text/javascript" } }]
         },
         {
-          "name": "1.6 Login moderator (for moderator tests)",
+          "name": "1.6 Login doctor (for doctor tests)",
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/users/login",
             "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\"username\":\"moderator\",\"password\":\"password123\"}" }
+            "body": { "mode": "raw", "raw": "{\"username\":\"doctor\",\"password\":\"password123\"}" }
           },
           "event": [{ "listen": "test", "script": { "exec": [
             "const j = pm.response.json();",
             "pm.test('200 OK', () => pm.response.code === 200);",
-            "if (j.token) pm.environment.set('moderatorToken', j.token);"
+            "if (j.token) pm.environment.set('doctorToken', j.token);"
           ], "type": "text/javascript" } }]
         }
       ]
@@ -123,26 +123,26 @@
           ], "type": "text/javascript" } }]
         },
         {
-          "name": "2.4 POST создать группу (moderator)",
+          "name": "2.4 POST создать группу (doctor)",
           "request": {
             "method": "POST",
             "url": "{{baseUrl}}/api/cavi-groups",
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{moderatorToken}}" }] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{doctorToken}}" }] },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": { "mode": "raw", "raw": "{\"name\":\"Test Group\",\"age_group\":\"young\",\"description\":\"Test description\"}" }
           },
           "event": [{ "listen": "test", "script": { "exec": [
             "const j = pm.response.json();",
-            "pm.test('201 Created or 403 not moderator', () => [201,403].includes(pm.response.code));",
+            "pm.test('201 Created or 403 not doctor', () => [201,403].includes(pm.response.code));",
             "if (j.id) pm.environment.set('groupId1', j.id);"
           ], "type": "text/javascript" } }]
         },
         {
-          "name": "2.5 PUT обновить группу (moderator)",
+          "name": "2.5 PUT обновить группу (doctor)",
           "request": {
             "method": "PUT",
             "url": "{{baseUrl}}/api/cavi-groups/{{groupId1}}",
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{moderatorToken}}" }] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{doctorToken}}" }] },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": { "mode": "raw", "raw": "{\"description\":\"Updated description\"}" }
           },
@@ -164,11 +164,11 @@
           ], "type": "text/javascript" } }]
         },
         {
-          "name": "2.7 DELETE удалить группу (moderator)",
+          "name": "2.7 DELETE удалить группу (doctor)",
           "request": {
             "method": "DELETE",
             "url": "{{baseUrl}}/api/cavi-groups/{{groupId1}}",
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{moderatorToken}}" }] }
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{doctorToken}}" }] }
           },
           "event": [{ "listen": "test", "script": { "exec": [
             "pm.test('200 OK or 403', () => [200,403].includes(pm.response.code));"
@@ -242,7 +242,7 @@
           "request": {
             "method": "PUT",
             "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}/moderate",
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{moderatorToken}}" }] },
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{doctorToken}}" }] },
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": { "mode": "raw", "raw": "{\"action\":\"complete\"}" }
           },
@@ -295,7 +295,101 @@
       ]
     },
     {
-      "name": "5. Logout",
+      "name": "5. Async CAVI Service",
+      "item": [
+        {
+          "name": "5.1 Health check (async service)",
+          "request": {
+            "method": "GET",
+            "url": "{{asyncServiceUrl}}/api/health"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);",
+            "pm.test('Service is cavi-async-calculator', () => pm.response.json().service === 'cavi-async-calculator');"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "5.2 Calculate CAVI (async)",
+          "request": {
+            "method": "POST",
+            "url": "{{asyncServiceUrl}}/api/calculate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"calculation_id\": {{calculationId}},\n  \"systolic_pressure\": 120,\n  \"diastolic_pressure\": 80,\n  \"pulse_wave_velocity\": 8.5,\n  \"groups\": [\n    {\"group_id\": 1, \"age_group\": \"young\", \"disease_type\": null},\n    {\"group_id\": 2, \"age_group\": \"middle\", \"disease_type\": \"diabetes\"},\n    {\"group_id\": 3, \"age_group\": \"elderly\", \"disease_type\": \"hypertension\"}\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('202 Accepted', () => pm.response.code === 202);",
+            "pm.test('Status is accepted', () => pm.response.json().status === 'accepted');",
+            "pm.test('Has groups_count', () => pm.response.json().groups_count === 3);"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "5.3 Calculate CAVI - missing fields",
+          "request": {
+            "method": "POST",
+            "url": "{{asyncServiceUrl}}/api/calculate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\"calculation_id\": 1}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('400 Bad Request', () => pm.response.code === 400);",
+            "pm.test('Has error message', () => pm.response.json().status === 'error');"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "5.4 Calculate CAVI - empty groups",
+          "request": {
+            "method": "POST",
+            "url": "{{asyncServiceUrl}}/api/calculate",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"calculation_id\": 1,\n  \"systolic_pressure\": 120,\n  \"diastolic_pressure\": 80,\n  \"pulse_wave_velocity\": 8.5,\n  \"groups\": []\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('400 Bad Request', () => pm.response.code === 400);",
+            "pm.test('No groups error', () => pm.response.json().message === 'No groups provided');"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "5.5 Trigger async via Go backend (doctor)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}/trigger-async",
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{doctorToken}}" }] }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK or 503 async unavailable', () => [200,503,403,404].includes(pm.response.code));",
+            "if (pm.response.code === 200) pm.test('Status ok', () => pm.response.json().status === 'ok');"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "5.6 Update async result (with token)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}/async-result",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"cavi-async-secret-token-8bytes\",\n  \"results\": [\n    {\"group_id\": 1, \"cavi_index\": 7.234},\n    {\"group_id\": 2, \"cavi_index\": 8.567}\n  ]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('200 OK', () => pm.response.code === 200);",
+            "pm.test('Results updated', () => pm.response.json().status === 'ok');"
+          ], "type": "text/javascript" } }]
+        },
+        {
+          "name": "5.7 Update async result - invalid token",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/cavi-calculations/{{calculationId}}/async-result",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"wrong-token\",\n  \"results\": [{\"group_id\": 1, \"cavi_index\": 5.0}]\n}" }
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('401 Unauthorized', () => pm.response.code === 401);",
+            "pm.test('Invalid token message', () => pm.response.json().message === 'invalid token');"
+          ], "type": "text/javascript" } }]
+        }
+      ]
+    },
+    {
+      "name": "6. Logout",
       "item": [
         {
           "name": "5.1 Logout (blacklist token)",
@@ -324,9 +418,10 @@
   ],
   "variable": [
     { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "asyncServiceUrl", "value": "http://localhost:8001" },
     { "key": "accessToken", "value": "" },
     { "key": "refreshToken", "value": "" },
-    { "key": "moderatorToken", "value": "" },
+    { "key": "doctorToken", "value": "" },
     { "key": "groupId1", "value": "1" },
     { "key": "calculationId", "value": "1" }
   ]

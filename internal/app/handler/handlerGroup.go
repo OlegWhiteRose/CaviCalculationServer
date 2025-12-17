@@ -117,7 +117,7 @@ func (h *Handler) GetGroupAPI(ctx *gin.Context) {
 
 // CreateGroupAPI создание группы
 // @Summary      Создать группу
-// @Description  Создаёт новую группу пациентов. Доступно только модераторам.
+// @Description  Создаёт новую группу пациентов. Доступно только врачам.
 // @Tags         groups
 // @Security     BearerAuth
 // @Accept       json
@@ -126,12 +126,12 @@ func (h *Handler) GetGroupAPI(ctx *gin.Context) {
 // @Success      201 {object} GroupResponse "Группа создана"
 // @Failure      400 {object} ErrorResponse "Неверные данные"
 // @Failure      401 {object} ErrorResponse "Требуется аутентификация"
-// @Failure      403 {object} ErrorResponse "Требуется роль модератора"
+// @Failure      403 {object} ErrorResponse "Требуется роль врача"
 // @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
 // @Router       /cavi-groups [post]
 func (h *Handler) CreateGroupAPI(ctx *gin.Context) {
-	if !isModeratorLoggedIn(ctx) {
-		ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "moderator role required"})
+	if !isDoctorLoggedIn(ctx) {
+		ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "doctor role required"})
 		return
 	}
 	var req GroupCreateRequest
@@ -216,7 +216,7 @@ func (h *Handler) UpdateGroupAPI(ctx *gin.Context) {
 
 // DeleteGroupAPI удаление группы
 // @Summary      Удалить группу
-// @Description  Мягкое удаление группы (is_deleted = true). Также удаляет изображение. Доступно только модераторам.
+// @Description  Мягкое удаление группы (is_deleted = true). Также удаляет изображение. Доступно только врачам.
 // @Tags         groups
 // @Security     BearerAuth
 // @Produce      json
@@ -224,12 +224,12 @@ func (h *Handler) UpdateGroupAPI(ctx *gin.Context) {
 // @Success      200 {object} SuccessResponse "Группа удалена"
 // @Failure      400 {object} ErrorResponse "Неверный ID"
 // @Failure      401 {object} ErrorResponse "Требуется аутентификация"
-// @Failure      403 {object} ErrorResponse "Требуется роль модератора"
+// @Failure      403 {object} ErrorResponse "Требуется роль врача"
 // @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
 // @Router       /cavi-groups/{id} [delete]
 func (h *Handler) DeleteGroupAPI(ctx *gin.Context) {
-	if !isModeratorLoggedIn(ctx) {
-		ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "moderator role required"})
+	if !isDoctorLoggedIn(ctx) {
+		ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "doctor role required"})
 		return
 	}
 	id, err := strconv.Atoi(ctx.Param("id"))

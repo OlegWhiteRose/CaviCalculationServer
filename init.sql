@@ -3,7 +3,7 @@
 CREATE TABLE IF NOT EXISTS auth_user (
     username VARCHAR(150) PRIMARY KEY,
     password VARCHAR(128) NOT NULL,
-    is_moderator BOOLEAN NOT NULL DEFAULT FALSE
+    is_doctor BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE IF NOT EXISTS cavi_groups (
@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS cavi_calculations (
     creator_login VARCHAR(150) NOT NULL REFERENCES auth_user(username),
     formed_at VARCHAR(50),
     completed_at VARCHAR(50),
-    moderator_login VARCHAR(150) REFERENCES auth_user(username),
+    doctor_login VARCHAR(150) REFERENCES auth_user(username),
     systolic_pressure INTEGER,
     diastolic_pressure INTEGER,
     pulse_wave_velocity DECIMAL(5,2),
@@ -51,9 +51,9 @@ CREATE INDEX IF NOT EXISTS idx_cavi_calculation_groups_calc ON cavi_calculation_
 CREATE INDEX IF NOT EXISTS idx_cavi_calculation_groups_group ON cavi_calculation_groups(group_id);
 
 -- Пароль для всех: password123 (bcrypt hash)
-INSERT INTO auth_user (username, password, is_moderator) VALUES
+INSERT INTO auth_user (username, password, is_doctor) VALUES
 ('admin', '$2a$10$2KZNfmkiQ8i2K27m47O7nehtFLNaJDu6hLuq6tXXiiuUWszBcWzR.', TRUE),
-('moderator', '$2a$10$2KZNfmkiQ8i2K27m47O7nehtFLNaJDu6hLuq6tXXiiuUWszBcWzR.', TRUE),
+('doctor', '$2a$10$2KZNfmkiQ8i2K27m47O7nehtFLNaJDu6hLuq6tXXiiuUWszBcWzR.', TRUE),
 ('user1', '$2a$10$2KZNfmkiQ8i2K27m47O7nehtFLNaJDu6hLuq6tXXiiuUWszBcWzR.', FALSE);
 
 INSERT INTO cavi_groups (name, description, age_group, disease_type, image_url) VALUES

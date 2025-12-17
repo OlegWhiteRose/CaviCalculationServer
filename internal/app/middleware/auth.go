@@ -51,17 +51,17 @@ func (m *AuthMiddleware) RequireAuth() gin.HandlerFunc {
 		}
 
 		c.Set("username", claims.Username)
-		c.Set("is_moderator", claims.IsModerator)
+		c.Set("is_doctor", claims.IsDoctor)
 		c.Set("jwt_token", tokenString)
 		c.Next()
 	}
 }
 
-func (m *AuthMiddleware) RequireModerator() gin.HandlerFunc {
+func (m *AuthMiddleware) RequireDoctor() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		isModerator, exists := c.Get("is_moderator")
-		if !exists || !isModerator.(bool) {
-			c.JSON(http.StatusForbidden, gin.H{"message": "moderator role required"})
+		isDoctor, exists := c.Get("is_doctor")
+		if !exists || !isDoctor.(bool) {
+			c.JSON(http.StatusForbidden, gin.H{"message": "doctor role required"})
 			c.Abort()
 			return
 		}
@@ -76,7 +76,7 @@ func (m *AuthMiddleware) OptionalAuth() gin.HandlerFunc {
 			claims, err := auth.ValidateToken(tokenString)
 			if err == nil {
 				c.Set("username", claims.Username)
-				c.Set("is_moderator", claims.IsModerator)
+				c.Set("is_doctor", claims.IsDoctor)
 			}
 		}
 		c.Next()
@@ -99,10 +99,10 @@ func GetUsername(c *gin.Context) (string, bool) {
 	return username.(string), true
 }
 
-func IsModerator(c *gin.Context) bool {
-	isMod, exists := c.Get("is_moderator")
+func IsDoctor(c *gin.Context) bool {
+	isDoc, exists := c.Get("is_doctor")
 	if !exists {
 		return false
 	}
-	return isMod.(bool)
+	return isDoc.(bool)
 }

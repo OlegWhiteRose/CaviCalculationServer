@@ -26,9 +26,9 @@ func NewHandler(cfg *config.Config, r *repository.Repository, s *storage.MinIOSt
 	}
 }
 
-// isModeratorLoggedIn проверяет, является ли текущий пользователь модератором (через JWT)
-func isModeratorLoggedIn(ctx *gin.Context) bool {
-	return middleware.IsModerator(ctx)
+// isDoctorLoggedIn проверяет, является ли текущий пользователь врачом (через JWT)
+func isDoctorLoggedIn(ctx *gin.Context) bool {
+	return middleware.IsDoctor(ctx)
 }
 
 // getCreatorLogin возвращает username текущего пользователя из JWT
@@ -37,8 +37,8 @@ func getCreatorLogin(ctx *gin.Context) string {
 	return username
 }
 
-// getModeratorLogin возвращает username модератора из JWT
-func getModeratorLogin(ctx *gin.Context) string {
+// getDoctorLogin возвращает username врача из JWT
+func getDoctorLogin(ctx *gin.Context) string {
 	username, _ := middleware.GetUsername(ctx)
 	return username
 }

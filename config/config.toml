@@ -1,2 +1,5 @@
 CaviServerHost = "localhost"
 CaviServerPort = 8080
+
+# Async CAVI calculator service
+AsyncServiceURL = "http://localhost:8001"

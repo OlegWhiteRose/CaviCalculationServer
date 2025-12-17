@@ -48,7 +48,7 @@ type CalculationResponse struct {
 	ID                int                        `json:"id" example:"1"`
 	Status            string                     `json:"status" example:"draft"`
 	CreatorLogin      string                     `json:"creator_login" example:"user1"`
-	ModeratorLogin    *string                    `json:"moderator_login" example:"moderator1"`
+	DoctorLogin       *string                    `json:"doctor_login" example:"doctor1"`
 	DateCreated       string                     `json:"date_created" example:"2025-01-15T10:30:00Z"`
 	DateFormed        *string                    `json:"date_formed" example:"2025-01-15T11:00:00Z"`
 	DateCompleted     *string                    `json:"date_completed" example:"2025-01-15T12:00:00Z"`
@@ -277,23 +277,23 @@ func (h *Handler) FormCalculationAPI(ctx *gin.Context) {
 
 // ModerateCalculationAPI модерация заявки
 // @Summary      Модерировать заявку
-// @Description  Завершает или отклоняет сформированную заявку. Доступно только модераторам. При завершении устанавливается количество групп.
+// @Description  Завершает или отклоняет сформированную заявку. Доступно только врачам. При завершении запускается асинхронный расчёт CAVI.
 // @Tags         calculations
 // @Security     BearerAuth
 // @Accept       json
 // @Produce      json
 // @Param        id path int true "ID заявки" example(1)
-// @Param        request body ModerateRequest true "Действие модератора"
+// @Param        request body ModerateRequest true "Действие врача"
 // @Success      200 {object} CalculationResponse "Заявка обработана"
 // @Failure      400 {object} ErrorResponse "Неверные данные или статус заявки"
 // @Failure      401 {object} ErrorResponse "Требуется аутентификация"
-// @Failure      403 {object} ErrorResponse "Требуется роль модератора"
+// @Failure      403 {object} ErrorResponse "Требуется роль врача"
 // @Failure      404 {object} ErrorResponse "Заявка не найдена"
 // @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
 // @Router       /cavi-calculations/{id}/moderate [put]
 func (h *Handler) ModerateCalculationAPI(ctx *gin.Context) {
-	if !isModeratorLoggedIn(ctx) {
-		ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "moderator role required"})
+	if !isDoctorLoggedIn(ctx) {
+		ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "doctor role required"})
 		return
 	}
 	id, err := strconv.Atoi(ctx.Param("id"))
@@ -306,7 +306,7 @@ func (h *Handler) ModerateCalculationAPI(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid action"})
 		return
 	}
-	moderatorLogin := getModeratorLogin(ctx)
+	doctorLogin := getDoctorLogin(ctx)
 	current, err := h.Repository.GetCalculationByID(id)
 	if err != nil || current == nil {
 		ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "not found"})
@@ -322,14 +322,11 @@ func (h *Handler) ModerateCalculationAPI(ctx *gin.Context) {
 			ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
 			return
 		}
-		if err := h.Repository.CompleteCalculation(id, moderatorLogin); err != nil {
+		if err := h.Repository.CompleteCalculation(id, doctorLogin); err != nil {
 			ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()})
 			return
 		}
-		if err := h.Repository.SetGroupsCount(id, len(groups)); err != nil {
-			ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()})
-			return
-		}
+		// groups_count будет установлен асинхронным сервисом
 		calc, _ := h.Repository.GetCalculationByID(id)
 		groups, _ = h.Repository.GetCalculationGroups(id)
 		for i := range groups {
@@ -341,7 +338,7 @@ func (h *Handler) ModerateCalculationAPI(ctx *gin.Context) {
 		ctx.JSON(http.StatusOK, calc)
 		return
 	}
-	if err := h.Repository.RejectCalculation(id, moderatorLogin); err != nil {
+	if err := h.Repository.RejectCalculation(id, doctorLogin); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()})
 		return
 	}

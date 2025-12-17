@@ -38,15 +38,15 @@ type UserUpdateRequest struct {
 // UserResponse ответ с данными пользователя
 // @Description Информация о пользователе
 type UserResponse struct {
-	Username    string `json:"username" example:"user1"`
-	IsModerator bool   `json:"is_moderator" example:"false"`
+	Username string `json:"username" example:"user1"`
+	IsDoctor bool   `json:"is_doctor" example:"false"`
 }
 
 // LoginResponse ответ при успешном входе
 // @Description Токены и информация о пользователе после входа
 type LoginResponse struct {
 	Username     string `json:"username" example:"user1"`
-	IsModerator  bool   `json:"is_moderator" example:"false"`
+	IsDoctor     bool   `json:"is_doctor" example:"false"`
 	Token        string `json:"token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 	RefreshToken string `json:"refresh_token" example:"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."`
 }
@@ -95,9 +95,9 @@ func (h *Handler) UsersRegisterAPI(ctx *gin.Context) {
 	}
 
 	user := ds.User{
-		Username:    req.Username,
-		Password:    string(hashedPassword),
-		IsModerator: false,
+		Username: req.Username,
+		Password: string(hashedPassword),
+		IsDoctor: false,
 	}
 
 	if err := h.Repository.DB().Create(&user).Error; err != nil {
@@ -106,8 +106,8 @@ func (h *Handler) UsersRegisterAPI(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusCreated, UserResponse{
-		Username:    user.Username,
-		IsModerator: user.IsModerator,
+		Username: user.Username,
+		IsDoctor: user.IsDoctor,
 	})
 }
 
@@ -147,7 +147,7 @@ func (h *Handler) UsersLoginAPI(ctx *gin.Context) {
 
 	logrus.Infof("Login: successful login for user: %s", req.Username)
 
-	token, err := auth.GenerateToken(user.Username, user.IsModerator)
+	token, err := auth.GenerateToken(user.Username, user.IsDoctor)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": "error creating token"})
 		return
@@ -168,7 +168,7 @@ func (h *Handler) UsersLoginAPI(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, LoginResponse{
 		Username:     user.Username,
-		IsModerator:  user.IsModerator,
+		IsDoctor:     user.IsDoctor,
 		Token:        token,
 		RefreshToken: refreshToken,
 	})
@@ -234,8 +234,8 @@ func (h *Handler) UsersMeAPI(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, UserResponse{
-		Username:    user.Username,
-		IsModerator: user.IsModerator,
+		Username: user.Username,
+		IsDoctor: user.IsDoctor,
 	})
 }
 
@@ -300,8 +300,8 @@ func (h *Handler) UsersUpdateMeAPI(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, UserResponse{
-		Username:    user.Username,
-		IsModerator: user.IsModerator,
+		Username: user.Username,
+		IsDoctor: user.IsDoctor,
 	})
 }
 
@@ -356,7 +356,7 @@ func (h *Handler) UsersRefreshAPI(ctx *gin.Context) {
 	}
 
 	// Генерируем новые токены
-	newToken, err := auth.GenerateToken(user.Username, user.IsModerator)
+	newToken, err := auth.GenerateToken(user.Username, user.IsDoctor)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": "error creating token"})
 		return
@@ -376,7 +376,7 @@ func (h *Handler) UsersRefreshAPI(ctx *gin.Context) {
 
 	ctx.JSON(http.StatusOK, LoginResponse{
 		Username:     user.Username,
-		IsModerator:  user.IsModerator,
+		IsDoctor:     user.IsDoctor,
 		Token:        newToken,
 		RefreshToken: newRefreshToken,
 	})

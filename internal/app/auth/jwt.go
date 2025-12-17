@@ -16,17 +16,17 @@ const (
 )
 
 type Claims struct {
-	Username    string `json:"username"`
-	IsModerator bool   `json:"is_moderator"`
+	Username string `json:"username"`
+	IsDoctor bool   `json:"is_doctor"`
 	jwt.RegisteredClaims
 }
 
-func GenerateToken(username string, isModerator bool) (string, error) {
+func GenerateToken(username string, isDoctor bool) (string, error) {
 	expirationTime := time.Now().Add(accessTokenTTL)
 
 	claims := &Claims{
-		Username:    username,
-		IsModerator: isModerator,
+		Username: username,
+		IsDoctor: isDoctor,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

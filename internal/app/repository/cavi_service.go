@@ -59,7 +59,7 @@ func (r *Repository) CreateDraftCalculation(userLogin string) (*ds.CaviCalculati
 
 func (r *Repository) GetCalculationByID(id int) (*ds.CaviCalculation, error) {
 	var calculation ds.CaviCalculation
-	err := r.db.Preload("Creator").Preload("Moderator").Where("id = ?", id).First(&calculation).Error
+	err := r.db.Preload("Creator").Preload("Doctor").Where("id = ?", id).First(&calculation).Error
 	if err != nil {
 		return nil, err
 	}
@@ -162,7 +162,7 @@ type CalculationFilters struct {
 }
 
 func (r *Repository) ListCalculationsFiltered(f CalculationFilters) ([]ds.CaviCalculation, error) {
-	q := r.db.Model(&ds.CaviCalculation{}).Preload("Creator").Preload("Moderator")
+	q := r.db.Model(&ds.CaviCalculation{}).Preload("Creator").Preload("Doctor")
 	if f.Status != "" {
 		q = q.Where("status = ?", f.Status)
 	}
@@ -187,7 +187,7 @@ func normalizeDate(date string) string {
 
 func (r *Repository) GetCalculationDetailed(id int) (*ds.CaviCalculation, error) {
 	var calc ds.CaviCalculation
-	if err := r.db.Preload("Creator").Preload("Moderator").First(&calc, "id = ?", id).Error; err != nil {
+	if err := r.db.Preload("Creator").Preload("Doctor").First(&calc, "id = ?", id).Error; err != nil {
 		return nil, err
 	}
 	return &calc, nil
@@ -203,16 +203,16 @@ func (r *Repository) FormCalculation(id int) error {
 		Updates(map[string]any{"status": ds.StatusFormed, "formed_at": gorm.Expr("TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI:SS')")}).Error
 }
 
-func (r *Repository) CompleteCalculation(id int, moderatorLogin string) error {
+func (r *Repository) CompleteCalculation(id int, doctorLogin string) error {
 	return r.db.Model(&ds.CaviCalculation{}).
 		Where("id = ? AND status = ?", id, ds.StatusFormed).
-		Updates(map[string]any{"status": ds.StatusCompleted, "completed_at": gorm.Expr("TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI:SS')"), "moderator_login": moderatorLogin}).Error
+		Updates(map[string]any{"status": ds.StatusCompleted, "completed_at": gorm.Expr("TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI:SS')"), "doctor_login": doctorLogin}).Error
 }
 
-func (r *Repository) RejectCalculation(id int, moderatorLogin string) error {
+func (r *Repository) RejectCalculation(id int, doctorLogin string) error {
 	return r.db.Model(&ds.CaviCalculation{}).
 		Where("id = ? AND status = ?", id, ds.StatusFormed).
-		Updates(map[string]any{"status": ds.StatusRejected, "completed_at": gorm.Expr("TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI:SS')"), "moderator_login": moderatorLogin}).Error
+		Updates(map[string]any{"status": ds.StatusRejected, "completed_at": gorm.Expr("TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI:SS')"), "doctor_login": doctorLogin}).Error
 }
 
 func (r *Repository) AddGroupToDraftByUser(userLogin string, groupID int) (*ds.CaviCalculation, error) {
@@ -257,4 +257,22 @@ func (r *Repository) SetGroupsCount(calculationID int, count int) error {
 	return r.db.Model(&ds.CaviCalculation{}).
 		Where("id = ?", calculationID).
 		Update("groups_count", count).Error
+}
+
+
+// UpdateGroupCAVIIndex обновляет CAVI индекс для группы в заявке (алиас для UpdateCAVIIndex)
+func (r *Repository) UpdateGroupCAVIIndex(calculationID, groupID int, caviIndex float64) error {
+	return r.UpdateCAVIIndex(calculationID, groupID, caviIndex)
+}
+
+// UpdateCalculationGroupsCount обновляет количество групп в заявке
+func (r *Repository) UpdateCalculationGroupsCount(calculationID, count int) error {
+	return r.SetGroupsCount(calculationID, count)
+}
+
+// SetCalculationDoctor устанавливает doctor_login для заявки
+func (r *Repository) SetCalculationDoctor(calculationID int, doctorLogin string) error {
+	return r.db.Model(&ds.CaviCalculation{}).
+		Where("id = ?", calculationID).
+		Update("doctor_login", doctorLogin).Error
 }

@@ -9,8 +9,9 @@ import (
 )
 
 type Config struct {
-	CaviServerHost string
-	CaviServerPort int
+	CaviServerHost  string
+	CaviServerPort  int
+	AsyncServiceURL string
 }
 
 func NewConfig() (*Config, error) {
