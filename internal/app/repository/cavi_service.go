@@ -276,3 +276,13 @@ func (r *Repository) SetCalculationDoctor(calculationID int, doctorLogin string)
 		Where("id = ?", calculationID).
 		Update("doctor_login", doctorLogin).Error
 }
+
+// CompleteCalculationAsync завершает заявку после получения результатов от async сервиса
+func (r *Repository) CompleteCalculationAsync(calculationID int) error {
+	return r.db.Model(&ds.CaviCalculation{}).
+		Where("id = ?", calculationID).
+		Updates(map[string]any{
+			"status":       ds.StatusCompleted,
+			"completed_at": gorm.Expr("TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI:SS')"),
+		}).Error
+}

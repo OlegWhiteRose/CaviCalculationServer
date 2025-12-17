@@ -94,12 +94,16 @@ func (h *Handler) UpdateAsyncResultAPI(ctx *gin.Context) {
 	}
 	if err := h.Repository.UpdateCalculationGroupsCount(id, groupsCount); err != nil {
 		log.Errorf("Failed to update groups_count for calculation %d: %v", id, err)
-		// Не возвращаем ошибку, т.к. основные результаты уже сохранены
+	}
+
+	// Завершаем заявку — меняем статус на completed
+	if err := h.Repository.CompleteCalculationAsync(id); err != nil {
+		log.Errorf("Failed to complete calculation %d: %v", id, err)
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
 		"status":       "ok",
-		"message":      "results updated",
+		"message":      "results updated, calculation completed",
 		"count":        len(req.Results),
 		"groups_count": groupsCount,
 	})
