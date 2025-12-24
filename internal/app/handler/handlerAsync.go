@@ -49,30 +49,30 @@ type AsyncCalculateRequest struct {
 // @Failure      401 {object} ErrorResponse "Неверный токен"
 // @Failure      404 {object} ErrorResponse "Заявка не найдена"
 // @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
-// @Router       /cavi-calculations/{id}/async-result [put]
+// @Router       /cavi-calculations/{id}/result [put]
 func (h *Handler) UpdateAsyncResultAPI(ctx *gin.Context) {
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid id"})
 		return
 	}
 
 	var req AsyncResultRequest
 	if err := ctx.BindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid json"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid json"})
 		return
 	}
 
 	// Проверка токена (псевдо-авторизация)
 	if req.Token != AsyncServiceToken {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"status": "fail", "message": "invalid token"})
+		ctx.JSON(http.StatusUnauthorized, gin.H{"message": "invalid token"})
 		return
 	}
 
 	// Проверяем существование заявки
 	calc, err := h.Repository.GetCalculationByID(id)
 	if err != nil || calc == nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "calculation not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"message": "calculation not found"})
 		return
 	}
 
@@ -80,7 +80,6 @@ func (h *Handler) UpdateAsyncResultAPI(ctx *gin.Context) {
 	for _, result := range req.Results {
 		if err := h.Repository.UpdateGroupCAVIIndex(id, result.GroupID, result.CAVIIndex); err != nil {
 			ctx.JSON(http.StatusInternalServerError, gin.H{
-				"status":  "fail",
 				"message": "failed to update group " + strconv.Itoa(result.GroupID),
 			})
 			return
@@ -102,7 +101,6 @@ func (h *Handler) UpdateAsyncResultAPI(ctx *gin.Context) {
 	}
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"status":       "ok",
 		"message":      "results updated, calculation completed",
 		"count":        len(req.Results),
 		"groups_count": groupsCount,
@@ -123,22 +121,22 @@ func (h *Handler) UpdateAsyncResultAPI(ctx *gin.Context) {
 // @Failure      403 {object} ErrorResponse "Требуется роль врача"
 // @Failure      404 {object} ErrorResponse "Заявка не найдена"
 // @Failure      500 {object} ErrorResponse "Внутренняя ошибка сервера"
-// @Router       /cavi-calculations/{id}/trigger-async [post]
+// @Router       /cavi-calculations/{id}/calculate [post]
 func (h *Handler) TriggerAsyncCalculationAPI(ctx *gin.Context) {
 	if !isDoctorLoggedIn(ctx) {
-		ctx.JSON(http.StatusForbidden, gin.H{"status": "fail", "message": "doctor role required"})
+		ctx.JSON(http.StatusForbidden, gin.H{"message": "doctor role required"})
 		return
 	}
 
 	id, err := strconv.Atoi(ctx.Param("id"))
 	if err != nil || id <= 0 {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "invalid id"})
+		ctx.JSON(http.StatusBadRequest, gin.H{"message": "invalid id"})
 		return
 	}
 
 	calc, err := h.Repository.GetCalculationDetailed(id)
 	if err != nil || calc == nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"status": "fail", "message": "calculation not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"message": "calculation not found"})
 		return
 	}
 
@@ -197,7 +195,7 @@ func (h *Handler) TriggerAsyncCalculationAPI(ctx *gin.Context) {
 	asyncURL := h.Config.AsyncServiceURL + "/api/calculate"
 	jsonData, err := json.Marshal(payload)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": "failed to marshal payload"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"message": "failed to marshal payload"})
 		return
 	}
 
@@ -217,7 +215,6 @@ func (h *Handler) TriggerAsyncCalculationAPI(ctx *gin.Context) {
 	if resp.StatusCode != http.StatusAccepted {
 		log.Errorf("Async service returned status %d", resp.StatusCode)
 		ctx.JSON(http.StatusBadGateway, gin.H{
-			"status":  "fail",
 			"message": "async service error",
 			"code":    resp.StatusCode,
 		})
@@ -235,7 +232,6 @@ func (h *Handler) TriggerAsyncCalculationAPI(ctx *gin.Context) {
 	log.Infof("Async calculation triggered for calculation_id=%d by doctor=%s", id, doctorLogin)
 
 	ctx.JSON(http.StatusOK, gin.H{
-		"status":  "ok",
 		"message": "async calculation started",
 		"doctor":  doctorLogin,
 		"payload": payload,

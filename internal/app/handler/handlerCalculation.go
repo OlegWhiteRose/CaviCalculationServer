@@ -82,12 +82,16 @@ func (h *Handler) GetCartIconAPI(ctx *gin.Context) {
 	userLogin := getCreatorLogin(ctx)
 	calc, err := h.Repository.GetDraftCalculationByUserLogin(userLogin)
 	if err != nil {
-		ctx.JSON(http.StatusOK, gin.H{"calculation_id": 0, "items": 0})
+		ctx.JSON(http.StatusOK, gin.H{"calculation_id": -1, "items": 0})
 		return
 	}
 	count, err := h.Repository.CountItemsInDraft(calc.ID)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "fail", "message": err.Error()})
+		return
+	}
+	if count == 0 {
+		ctx.JSON(http.StatusOK, gin.H{"calculation_id": -1, "items": 0})
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"calculation_id": calc.ID, "items": count})

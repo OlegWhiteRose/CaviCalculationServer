@@ -99,8 +99,8 @@ func StartServer() {
 		api.PUT("/cavi-calculations/draft/groups", authMiddleware.RequireAuth(), h.UpdateItemInDraftAPI)
 
 		// Асинхронный расчёт CAVI
-		api.PUT("/cavi-calculations/:id/async-result", h.UpdateAsyncResultAPI) // Без auth - использует токен
-		api.POST("/cavi-calculations/:id/trigger-async", authMiddleware.RequireAuth(), authMiddleware.RequireDoctor(), h.TriggerAsyncCalculationAPI)
+		api.PUT("/cavi-calculations/:id/result", h.UpdateAsyncResultAPI) // Без auth - использует токен
+		api.POST("/cavi-calculations/:id/calculate", authMiddleware.RequireAuth(), authMiddleware.RequireDoctor(), h.TriggerAsyncCalculationAPI)
 	}
 
 	serverAddr := fmt.Sprintf("%s:%d", cfg.CaviServerHost, cfg.CaviServerPort)
